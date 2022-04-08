@@ -2,32 +2,20 @@
 const mongoose = require("mongoose");
 
 const userSessionSchema = new mongoose.Schema({
-    attachedUser: {
+    user: {
         type: mongoose.SchemaTypes.ObjectId, 
         required: false
     }, 
-    activity: {
-        start: { 
-            type: mongoose.SchemaTypes.Date,
-            default: Date.now(),
-            required: true,
-        }, end: {
-            type: mongoose.SchemaTypes.Date,
-            default: null,
-            required: false,
-        }
-    },
     sessionString: { 
         type: String,
         required: true 
     },
-    restricts: [{ 
-        type: mongoose.SchemaTypes.ObjectId, 
-        required: true 
-    }]
+    last: {
+        type: Date,
+        default: new Date("1 Jan 2000")
+    }
 }, { 
     collection: "userSessions", 
-    strict: "throw"
 })
 
 module.exports = mongoose.model('userSession', userSessionSchema);

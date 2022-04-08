@@ -19,8 +19,7 @@ const userEventSchema = new mongoose.Schema({
             type: Date, 
             default: null,
             required: false
-        },
-        required: false,
+        }
     }
 }, {
     collection: "userEvents",

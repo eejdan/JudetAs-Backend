@@ -1,0 +1,116 @@
+if (require.main === module) {
+    require('dotenv').config();
+}
+const express = require('express')
+const { body } = require('express-validator');
+const crypto = require("crypto");
+
+const { encrypt, decrypt } = require('../util/encryption');
+const generateString = require('../util/generateString');
+
+const expressValidation = require('../middleware/expressValidation');
+
+const mongoose = require("../connections/mongooseConnection");
+const Test = require("../schemas/test");
+const User = require("../schemas/user");
+const AdminRole = require("../schemas/adminRole")
+const UserSession = require("../schemas/userSession")
+
+const redis = require('redis');
+const client = redis.createClient({ 
+    username: process.env.BACKEND_REDIS_USERNAME, 
+    password: process.env.BACKEND_REDIS_PASSWORD,
+    url: process.env.BACKEND_REDIS_URL,
+});
+const router = express.Router();
+
+router.post('/login', 
+    body('username').not().isEmpty().isAlphanumeric().isLength({ min: 5, max: 48 }), 
+    body('password').not().isEmpty().isString().isLength({ min: 5, max: 48 }),
+    body('').not().isEmpty().isBoolean(),
+    expressValidation,
+    async (req, res) => {
+        let hashObject = crypto.createHash("sha256");
+        let user = await User.findOne({ 
+            username: req.body.username, 
+            password: hashObject.update(req.body.password).digest('hex') 
+        }, {_id:1}).exec();
+        if(!user) {
+            return res.sendStatus(401)
+        }
+        let newSessionString = generateString(64);
+        let newSession = await UserSession.create({
+            user: user._id,
+            sessionString: newSessionString
+        })
+        res.cookie('unsolved_sid', newSessionString, { signed: false });
+        return res.status(200).send({
+            sid: newSessionString
+        });
+    }    
+)
+router.post('/authorize',
+ 
+    expressValidation,
+    async (req, res) => {
+    {
+        const sid = req.body['unsolved_sid']
+        let session = await UserSession.findOne({
+            sessionString: sid
+        })
+        //
+        if(!session) {
+            res.clearCookie('unsolved_sid')
+            return res.sendStatus(401);
+        }
+        {
+            let validTimeDelimiter = Date.now() - (5 * 24 * 60 * 60 * 1000); //zile*ore*minute*secunde*milisecunde
+            if(session.last < validTimeDelimiter) {
+                return res.sendStatus(410);
+            }   
+        }
+        let user = await User.findById(session.user)
+        if(!user) return res.sendStatus(500);
+        let adminRole = await adminRole
+        //TESTED
+        {
+            let hashObject = crypto.createHash("sha256");
+            if(sid != hashObject.update(sid+decrypt(user.pin)).digest('hex')) {
+                return res.sendStatus(401)
+            }
+        }
+        var keyString;
+        var newAccessTokenString;
+        let found = true;
+        do {
+            newAccessTokenString = generateString(64);
+            keyString = 'sessionAccessTokens:'+sid+':'
+            let tryString = await client.get(keyString+newAccessTokenString);
+            if(!tryString) 
+                found = false;
+        } while (found);
+        client.set(keyString+newAccessTokenString, Date.now());   //
+        client.set(keyString+'last', newAccessTokenString);      //
+        let hashObject = crypto.createHash("sha256");
+        let authorityString = (hashObject.update(encrypt(sid)+))
+        client.set(keyString+'authority', )
+        session.last = Date.now();
+        session.save();
+        return res.status(200).send({ 
+            currentAccessToken: newAccessTokenString 
+        });
+    }
+})
+
+router.get('/deleteToken', (req, res) => {
+    res.clearCookie('currentAccessToken');
+    return res.sendStatus(200);
+})
+console.log("pre");
+(async () => {
+    client.on('error', (err) => console.log('Redis Client Error', err));
+    client.on('connect', () => console.log('Redis client connected'));
+    await client.connect();
+})();
+
+module.exports = router;

@@ -25,7 +25,7 @@ const client = redis.createClient({
 
 const router = express.Router();
 
-router.post('/login', 
+router.post('/admin/login', 
     body('username').not().isEmpty().isAlphanumeric().isLength({ min: 5, max: 48 }), 
     body('password').not().isEmpty().isString().isLength({ min: 5, max: 48 }),
     expressValidation,

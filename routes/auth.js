@@ -1,86 +1,76 @@
 if (require.main === module) {
     require('dotenv').config();
 }
-const express = require('express')
-const { body, validationResult } = require('express-validator');
+
+const express = require('express');
+const { body } = require('express-validator');
 const crypto = require("crypto");
 
-const mongoose = require("mongoose");
-const Test = require("../schemas/test");
-const User = require("../schemas/user")
-const UserSession = require("../schemas/userSession")
+const { encrypt, decrypt } = require('../util/encryption');
+const generateString = require('../util/generateString');
+
+const expressValidation = require('../middleware/expressValidation');
+const authFindUser = require('../middleware/authFindUser');
+
+const User = require('../models/User');
+const UserSession = require('../models/userSession');
 
 const redis = require('redis');
-const userSession = require('../schemas/userSession');
+const mongoose = require('mongoose');
 const client = redis.createClient({ 
     username: process.env.BACKEND_REDIS_USERNAME, 
     password: process.env.BACKEND_REDIS_PASSWORD,
     url: process.env.BACKEND_REDIS_URL,
 });
+
 const router = express.Router();
 
 router.post('/login', 
     body('username').not().isEmpty().isAlphanumeric().isLength({ min: 5, max: 48 }), 
     body('password').not().isEmpty().isString().isLength({ min: 5, max: 48 }),
+    expressValidation,
+    authFindUser, 
     async (req, res) => {
-        {
-            let errors = validationResult(req);
-            if(!errors.isEmpty()) {
-                console.log(req.body)
-                return res.sendStatus(400);
+        let found = true;
+        let newSessionString;
+        let redisPathString = "admin:"+"sessions:";
+        do {
+            newSessionString = generateString(64);
+            let tryStringQuery = await client.EXISTS(
+                redisPathString
+                +newSessionString
+            )
+            if(tryStringQuery) {
+                found = false;
             }
-        }
-
-        let hashObject = crypto.createHash("sha256");
-        let user = await User.findOne({ 
-            username: req.body.username, 
-            password: hashObject.update(req.body.password).digest('hex') 
-        }, {_id:1}).exec();
-        if(!user) {
-            console.log(user);
-            return res.sendStatus(401)
-        }
-        console.log(user)
-        let newSessionString = generateString(64);
-        let newSession = await userSession.insertOne({
-            user: user._id,
+        }while(!found);
+        /* in momentul ce expira(dispare) cheia admin:sessions:${sessionString} 
+        inseamna ca sesiunea nu mai este valida (expired) */
+        client.set(redisPathString+newSessionString, true, 
+            { EX: (10 * 24 * 60 * 60) }
+        )
+        client.set(redisPathString+newSessionString+':userid', user._id);
+        let session = new UserSession({
+            user: mongoose.Types.ObjectId(res.locals.user._id),
             sessionString: newSessionString
         })
-        res.cookie('unsolved-sid', newSessionString);
-        return res.sendStatus(200);
-    }    
-)
-router.post('/admin/authorize', (req, res) => {
-    
-})
-console.log("pre")
-init().catch(err => console.log(err));
-async function init() {
-    client.on('error', (err) => console.log('Redis Client Error', err));
-    client.on('connect', () => console.log('Redis client connected'));
-
-    mongoose.connect(
-        'mongodb+srv://'
-        +process.env.BACKEND_MONGO_USERNAME
-        +':'+process.env.BACKEND_MONGO_PASSWORD
-        +'@'+process.env.BACKEND_MONGO_URL, {
-            dbName: 'JudetAs',
-            useNewUrlParser: true,
-            useUnifiedTopology: true
-        }
-    );
-}
-
-const characters ='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-
-function generateString(length) {
-    let result = ' ';
-    const charactersLength = characters.length;
-    for ( let i = 0; i < length; i++ ) {
-        result += characters.charAt(Math.floor(Math.random() * charactersLength));
+        session.save((err) => console.log(error));
+        let newTokenString;
+        do {
+            newTokenString = generateString(64);
+            let tryStringQuery = await client.EXISTS(
+                redisPathString + newSessionString + ':tokens'
+            )
+            if(tryStringQuery) {
+                found = false;
+            }
+        } while(!found)
+        redisPathString = redisPathString + newSessionString + ':'
+        client.set(redisPathString+"tokens:"+newTokenString, true);
+        client.set(redisPathString+"tokens:last", newTokenString);
+        client.set(redisPathString+"tokens:last-date", Date.now());
     }
-
-    return result;
-}
+)
+//admin:sessions:${sessionString}:authorized set and expire after 30 minutes
 
 module.exports = router;

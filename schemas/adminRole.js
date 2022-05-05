@@ -3,9 +3,9 @@
 const mongoose = require("mongoose");
 
 const adminRoleSchema = new mongoose.Schema({
-    general: {
-        type: Boolean,
-        default: false
+    localInstance: {
+        type: mongoose.SchemaTypes.ObjectId,
+        required: false
     },
     user: {
         type: mongoose.SchemaTypes.ObjectId,

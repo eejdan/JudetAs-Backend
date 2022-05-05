@@ -18,6 +18,7 @@
   },
   "homepage": "https://github.com/eejdan/JudetAs-Backend#readme",
   "dependencies": {
+    "cookie-parser": "^1.4.6",
     "csv-parser": "^3.0.0",
     "dotenv": "^16.0.0",
     "express": "^4.17.3",
@@ -25,7 +26,6 @@
     "helmet": "^5.0.2",
     "mongoose": "^6.2.9",
     "random-words": "^1.1.2",
-    "redis": "^4.0.6",
-    "validator": "^13.7.0"
+    "redis": "^4.0.6"
   }
 }

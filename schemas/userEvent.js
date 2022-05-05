@@ -26,6 +26,6 @@ const userEventSchema = new mongoose.Schema({
     strict: "throw"
 })
 
-module.exports = mongoose.model("UserEvent", userEventSchema)
+module.exports = userEventSchema
 
 //UserEvents 

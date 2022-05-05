@@ -8,14 +8,10 @@ const userSessionSchema = new mongoose.Schema({
     }, 
     sessionString: { 
         type: String,
-        required: true 
-    },
-    last: {
-        type: Date,
-        default: new Date("1 Jan 2000")
+        required: true,
+        unique: true
     }
 }, { 
     collection: "userSessions", 
 })
-
-module.exports = mongoose.model('userSession', userSessionSchema);
+module.exports = userSessionSchema;

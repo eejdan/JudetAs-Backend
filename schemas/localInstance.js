@@ -39,4 +39,4 @@ const localInstanceSchema = new mongoose.Schema({
     collection: 'localInstances'
 })
 
-module.exports = mongoose.model('LocalInstance', localInstanceSchema)
+module.exports = localInstanceSchema;

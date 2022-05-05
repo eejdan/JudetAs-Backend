@@ -8,4 +8,4 @@ const testSchema = new mongoose.Schema({
     strict: "throw"
 });
 
-module.exports = mongoose.model("Test", testSchema);
+module.exports = testSchema;

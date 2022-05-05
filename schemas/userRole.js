@@ -14,4 +14,4 @@ const userRoleSchema = new mongoose.Schema({
     collection: 'userRoles'
 })
 
-module.exports = mongoose.model("UserRole", userRoleSchema)
+module.exports = userRoleSchema

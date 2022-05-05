@@ -13,3 +13,5 @@ const adminRoleSchema = new mongoose.Schema({
         required: true
     }
 })
+
+module.exports = adminRoleSchema

@@ -14,6 +14,8 @@ const authFindUser = require('../middleware/authFindUser');
 
 const User = require('../models/User');
 const UserSession = require('../models/userSession');
+const AdminRole = require('../models/AdminRole')
+const GeneralAdminRole = require('../models/GeneralAdminRole');
 
 const redis = require('redis');
 const mongoose = require('mongoose');
@@ -55,11 +57,14 @@ router.post('/admin/login',
             sessionString: newSessionString
         })
         session.save((err) => console.log(error));
+
+        redisPathString = redisPathString + newSessionString + ':';
+
         let newTokenString;
         do {
             newTokenString = generateString(64);
             let tryStringQuery = await client.EXISTS(
-                redisPathString + newSessionString + ':tokens'
+                redisPathString + ':tokens:' + newTokenString
             )
             if(tryStringQuery) {
                 found = false;
@@ -71,6 +76,52 @@ router.post('/admin/login',
         client.set(redisPathString+"tokens:last-date", Date.now());
     }
 )
+router.post('/admin/authorize', 
+    //body checks here TBD
+    body("unsolved_sid").not().isEmpty().isAlphanumeric().isLength(64),
+    body("solved_sid").not().isEmpty().isAlphanumeric().isLength(64),
+    expressValidation,
+    (req, res) => {
+    let hashObject = crypto.createHash("sha256");
+
+    let redisPathString = 'admin:sessions:'+req.body.unsolved_sid;
+    { //Verifica daca exista sesiunea
+        let trySession = await client.EXISTS(redisPathString)
+        if(!trySession) {
+            return res.status(401).send({
+                authFail: 'session'
+            });
+        }
+    }
+    //Gaseste userul sesiunii
+    let user = await User.findById(await client.get(redisPathString+':userid')).exec();
+    if(!user) {
+        return res.sendStatus(400);
+    }
+    let tryAdminRole = await AdminRole.findOne({
+        user: mongoose.Types.ObjectId(user._id)
+    })
+    if(!tryAdminRole) {
+        return res.sendStatus(401);
+    }
+    let found = true;
+    let newTokenString;
+        do {
+            newTokenString = generateString(64);
+            let tryStringQuery = await client.EXISTS(
+                redisPathString + ':tokens:' + newTokenString
+            )
+            if(tryStringQuery) {
+                found = false;
+            }
+    } while(!found);
+    await client.set(redisPathString + ':tokens:' + newTokenString, true)
+    await client.set(redisPathString + ':tokens:last', newTokenString)
+    await client.set(redisPathString + ':authorized', true, { EX: (30 * 60) })
+    return res.status(201).send({
+        currentAccessToken: newTokenString
+    })
+})
 //admin:sessions:${sessionString}:authorized set and expire after 30 minutes
 
 module.exports = router;

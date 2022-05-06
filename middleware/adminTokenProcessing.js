@@ -47,7 +47,7 @@ export const adminTokenProcessing = (req, res, next) => {
     { /*Verifica daca sesiune e autorizata 
         (administratorii vor trebuie sa reintroduca un pin 
         la fiecare jumatate de ora ca sa autorizeze sesiunea) */
-        let tryAuthorized = await client.EXISTS(redisPathString+':last-authorized');
+        let tryAuthorized = await client.EXISTS(redisPathString+':authorized');
         //cheia :last-authorized expira (se sterge singura) dupa 30 de minute de la autorizare
         if(!tryAuthorized) {
             return res.status(410).send({
@@ -69,8 +69,9 @@ export const adminTokenProcessing = (req, res, next) => {
     await client.set(redisPathString+':tokens:'+newTokenString, true);
     await client.set(redisPathString+":tokens:last", newTokenString);
     await client.set(redisPathString+":tokens:last-date", Date.now());
-    await client.set(redisPathString+':last-authorized:', true, { EX: (30 * 60)});
+    await client.set(redisPathString+':authorized', true, { EX: (30 * 60)});
     res.locals.currentAccessToken = newTokenString;
+    
     next();
 }
 

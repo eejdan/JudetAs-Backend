@@ -15,7 +15,6 @@ const authFindUser = require('../middleware/authFindUser');
 const User = require('../models/User');
 const UserSession = require('../models/userSession');
 const AdminRole = require('../models/AdminRole')
-const GeneralAdminRole = require('../models/GeneralAdminRole');
 
 const redis = require('redis');
 const mongoose = require('mongoose');

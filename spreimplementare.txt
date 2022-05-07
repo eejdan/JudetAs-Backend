@@ -1,0 +1,14 @@
+
+##001 implementare phonenumber query in admin general
+
+##002 input pin to reveal CNP, phonenumber
+
+server will store information in redis 
+
+cotainer.buffers = {
+    {bufferitem-title}: {bufferid} 
+}
+
+admin:{userid}:buffers:{bufferid}:information EX 60 * 15 (15 minutes)
+
+##003 code split > router pentru /admin/administrator-general

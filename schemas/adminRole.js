@@ -1,11 +1,11 @@
 
-
+// redundant? calculable?
 const mongoose = require("mongoose");
 
 const adminRoleSchema = new mongoose.Schema({
     localInstance: {
         type: mongoose.SchemaTypes.ObjectId,
-        required: false
+        required: true
     },
     user: {
         type: mongoose.SchemaTypes.ObjectId,

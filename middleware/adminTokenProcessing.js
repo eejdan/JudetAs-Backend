@@ -10,8 +10,6 @@ const client = redis.createClient({
 });
 
 const mongoose = require('mongoose')
-const UserSession = require('../models/userSession');
-const User = require('../models/User')
 
 const { encrypt, decrypt } = require("../util/encryption");
 const generateString = require('../util/generateString');
@@ -25,6 +23,13 @@ export const adminTokenProcessing = (req, res, next) => {
                 authFail: 'session'
             });
         }
+    }
+    {
+        let uid = await client.get(redisPathString+':userid');
+        if(!uid) {
+            return res.sendStatus(500);
+        }
+        res.locals.userid = uid;
     }
     { //Verifica daca exista tokenul de access si daca este cel curent
         let tryToken = await client.EXISTS(redisPathString+':tokens:'+req.body.currentAccessToken)
@@ -71,8 +76,7 @@ export const adminTokenProcessing = (req, res, next) => {
     await client.set(redisPathString+":tokens:last-date", Date.now());
     await client.set(redisPathString+':authorized', true, { EX: (30 * 60)});
     res.locals.currentAccessToken = newTokenString;
-    
     next();
 }
 
-export default adminTokenProcessing;
+module.exports = adminTokenProcessing;

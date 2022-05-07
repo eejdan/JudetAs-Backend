@@ -27,7 +27,7 @@ const client = redis.createClient({
 
 const router = express.Router();
 
-router.post('/admin/login', 
+router.post('/admin/login', //returneaza response cu o sesiune (neautorizata inca)
     body('username').not().isEmpty().isAlphanumeric().isLength({ min: 5, max: 48 }), 
     body('password').not().isEmpty().isString().isLength({ min: 5, max: 48 }),
     expressValidation,
@@ -76,7 +76,7 @@ router.post('/admin/login',
         client.set(redisPathString+"tokens:last-date", Date.now());
     }
 )
-router.post('/admin/authorize', 
+router.post('/admin/authorize', //ia sesiunea si sesiunea codificata cu pinul returneaza un access token 
     //body checks here TBD
     body("unsolved_sid").not().isEmpty().isAlphanumeric().isLength(64),
     body("solved_sid").not().isEmpty().isAlphanumeric().isLength(64),
@@ -97,6 +97,12 @@ router.post('/admin/authorize',
     let user = await User.findById(await client.get(redisPathString+':userid')).exec();
     if(!user) {
         return res.sendStatus(400);
+    }
+    {
+        let hashObject = crypto.createHash("sha256");
+        if(req.body['solved-sid'] != hashObject.update(sid+decrypt(user.pin)).digest('hex')) {
+            return res.sendStatus(401)
+        }
     }
     let tryAdminRole = await AdminRole.findOne({
         user: mongoose.Types.ObjectId(user._id)

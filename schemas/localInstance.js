@@ -2,11 +2,6 @@
 const mongoose = require("mongoose");
 
 const localInstanceSchema = new mongoose.Schema({
-    admin: {
-        type: mongoose.SchemaTypes.ObjectId,
-        ref: 'adminRoles',
-        default: null,
-    },
     displayName: { 
         type: String, 
         required: true,

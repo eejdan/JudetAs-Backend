@@ -26,7 +26,7 @@ router.get("/administrator-general/dynamicqueries",
     body("unsolved_sid").not().isEmpty().isAlphanumeric().isLength(64),
     body("currentAccessToken").not().isEmpty().isAlphanumeric().isLength(64),
     body("query_type").isString({ max: 32 }),
-    body("query_handle").isString({ max: 46 }),
+    body("query_handle").isString(),
     expressValidation,
     adminTokenProcessing,
     (req, res) => {
@@ -64,7 +64,7 @@ router.get("/administrator-general/single",
     body("unsolved_sid").not().isEmpty().isAlphanumeric().isLength(64),
     body("currentAccessToken").not().isEmpty().isAlphanumeric().isLength(64),
     body("query_type").isString({ max: 32 }),
-    body("query_handle").isString({ max: 46 }),
+    body("query_handle").isString(),
     expressValidation,
     adminTokenProcessing,
     (req, res) => {
@@ -206,6 +206,8 @@ router.get("/administrator-general/list",
     })
     return res.status(200).send({ requests: requests }); //left here
 })
+
+
 router.get("/user-req", (req, res) => {
     let userQuery = User.find({});
     userQuery.exec((err, docs) => {

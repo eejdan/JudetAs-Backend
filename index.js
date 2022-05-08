@@ -44,5 +44,5 @@ app.get('/api/', (req, res) => {
 })
 
 
-//usernames will have max 46 chars
+//usernames will have max 48 chars
 app.listen(process.env.BACKEND_PORT)

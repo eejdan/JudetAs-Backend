@@ -47,10 +47,10 @@ router.post('/admin/login', //returneaza response cu o sesiune (neautorizata inc
         }while(!found);
         /* in momentul ce expira(dispare) cheia admin:sessions:${sessionString} 
         inseamna ca sesiunea nu mai este valida (expired) */
-        client.set(redisPathString+newSessionString, true, 
+        await client.set(redisPathString+newSessionString, true, 
             { EX: (10 * 24 * 60 * 60) }
         )
-        client.set(redisPathString+newSessionString+':userid', user._id);
+        await client.set(redisPathString+newSessionString+':userid', user._id);
         let session = new UserSession({
             user: mongoose.Types.ObjectId(res.locals.user._id),
             sessionString: newSessionString
@@ -70,9 +70,13 @@ router.post('/admin/login', //returneaza response cu o sesiune (neautorizata inc
             }
         } while(!found)
         redisPathString = redisPathString + newSessionString + ':'
-        client.set(redisPathString+"tokens:"+newTokenString, true);
-        client.set(redisPathString+"tokens:last", newTokenString);
-        client.set(redisPathString+"tokens:last-date", Date.now());
+        await client.set(redisPathString+"tokens:"+newTokenString, true);
+        await client.set(redisPathString+"tokens:last", newTokenString);
+        await client.set(redisPathString+"tokens:last-date", Date.now());
+        res.cookie('unsolved_sid', newSessionString)
+        return res.status(200).send({
+            currentAccessToken: newTokenString,
+        })
     }
 )
 router.post('/admin/authorize', //ia sesiunea si sesiunea codificata cu pinul returneaza un access token 
@@ -80,7 +84,7 @@ router.post('/admin/authorize', //ia sesiunea si sesiunea codificata cu pinul re
     body("unsolved_sid").not().isEmpty().isAlphanumeric().isLength(64),
     body("solved_sid").not().isEmpty().isAlphanumeric().isLength(64),
     expressValidation,
-    (req, res) => {
+    async (req, res) => {
     let hashObject = crypto.createHash("sha256");
 
     let redisPathString = 'admin:sessions:'+req.body.unsolved_sid;
@@ -128,5 +132,49 @@ router.post('/admin/authorize', //ia sesiunea si sesiunea codificata cu pinul re
     })
 })
 //admin:sessions:${sessionString}:authorized set and expire after 30 minutes
+
+
+//user:sessions:${sessionString} set and expire after 10 days
+
+router.post('/user/login', 
+    body('username').not().isEmpty().isAlphanumeric().isLength({ min: 5, max: 48 }), 
+    body('password').not().isEmpty().isString().isLength({ min: 5, max: 48 }),
+    expressValidation,
+    authFindUser, //pasword verification is in this middleware
+    async (req, res) => {
+    let redisPathString = 'user:sessions:';
+    let newSessionString;
+    let newTokenString;
+    {
+        let found = true;
+        do {
+            newSessionString = generateString(64);
+            let tryStringQuery = await client.EXISTS(
+                redisPathString
+                +newSessionString
+            )
+            if(tryStringQuery) {
+                found = false;
+            }
+        }while(!found);
+        do { // to verify all redis paths
+            newTokenString = generateString(64);
+            let tryStringQuery = await client.EXISTS(
+                redisPathString
+                +newSessionString+ ':tokens:' +newTokenString
+            )
+            if(tryStringQuery) {
+                found = false;
+            }
+        }while(!found);
+        redisPathString = redisPathString+newSessionString;
+        await client.set(redisPathString, true, { EX: (10 * 24 * 60 * 60)});
+        await client.set(redisPathString+':tokens:'+newTokenString, true)
+        await client.set(redisPathString+':userid', res.locals.user._id);
+        await client.set(redisPathString+':tokens:last', newTokenString);
+
+    }
+})
+
 
 module.exports = router;

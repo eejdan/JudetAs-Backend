@@ -158,7 +158,7 @@ router.post("/administrator-general/single",
 })
 
 //lista de cereri de administrare 
-router.get("/administrator-general/list", 
+router.get("/administrator-general/request-list", 
     body("unsolved_sid").not().isEmpty().isAlphanumeric().isLength(64),
     body("currentAccessToken").not().isEmpty().isAlphanumeric().isLength(64),
     expressValidation, 
@@ -187,7 +187,7 @@ router.get("/administrator-general/list",
         container.CNP = iteratedUser.meta.CNP;        
         return container;
     }))
-    return res.status(200).send({ requests: requests }); //left here
+    return res.status(200).send({ requests: requests });
 })
-
+//tbd get adminroles
 module.exports = router;

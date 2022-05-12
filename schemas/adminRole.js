@@ -1,5 +1,4 @@
 
-// redundant? calculable?
 const mongoose = require("mongoose");
 
 const adminRoleSchema = new mongoose.Schema({
@@ -12,6 +11,8 @@ const adminRoleSchema = new mongoose.Schema({
         ref: 'users',
         required: true
     }
+}, {
+    collection: 'adminRoles'
 })
 
 module.exports = adminRoleSchema

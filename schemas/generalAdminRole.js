@@ -8,7 +8,7 @@ const generalAdminRoleSchema = new mongoose.Schema({
     },
     user: {
         type: mongoose.SchemaTypes.ObjectId,
-        required: false,
+        required: true,
         unique: true
     }
 }, {

@@ -8,6 +8,7 @@ const express = require("express");
 
 const mongoose = require('mongoose')
 const User = require('../models/User');
+const ModRole = require('../models/ModRole');
 const AdminRole = require('../models/AdminRole');
 const GeneralAdminRole = require('../models/GeneralAdminRole');
 const LocalInstance = require('../models/LocalInstance');
@@ -15,29 +16,35 @@ const LocalInstance = require('../models/LocalInstance');
 const adminTokenProcessing = require('../middleware/adminTokenProcessing');
 
 const router = express.Router();
+const localAdmin = require("./admin/localAdmin");
 
+router.use("/administrator-local", localAdmin)
 //router.use()
 
 // ##003
+const GACheck = (req, res, next) => {
+    let GARole = await GeneralAdminRole.exists({ user: res.locals.userid });
+    if(!GARole) {
+        return res.sendStatus(401);
+    }
+    return next();
+}
+
+router.post("/create-pin", (req, res) => res.sendStatus(501)); //tbd
 
 
 //folosit pentru confirmarea existentei utilizatorului in casuta de cautare din panoul de administrare generala
 router.get("/administrator-general/dynamicqueries",
     body("unsolved_sid").not().isEmpty().isAlphanumeric().isLength(64),
     body("currentAccessToken").not().isEmpty().isAlphanumeric().isLength(64),
-    body("query_type").isString({ max: 32 }),
-    body("query_handle").isString(),
+    body("query_type").not().isEmpty().isString({ max: 32 }),
+    body("query_handle").not().isEmpty().isString({ max: 48 }),
     expressValidation,
     adminTokenProcessing,
+    GACheck,
     (req, res) => {
     if(!res.locals.currentAccessToken) {
         return res.sendStatus(500);
-    }
-    {
-        let GARole = await GeneralAdminRole.exists({ user: res.locals.userid });
-        if(!GARole) {
-            return res.sendStatus(401);
-        }
     }
     var user;
     switch (req.body.query_type) {
@@ -47,8 +54,6 @@ router.get("/administrator-general/dynamicqueries",
         case 'CNP': 
             user = await User.findOne({ meta: { CNP: req.body.query_handle }}).select({ _id: 1 }).exec();
             break;
-        case 'phonenumber': 
-            return res.sendStatus(501) // de implementat ##001
         default:
             return res.sendStatus(400);
             break;
@@ -63,55 +68,34 @@ router.get("/administrator-general/dynamicqueries",
 router.get("/administrator-general/single",
     body("unsolved_sid").not().isEmpty().isAlphanumeric().isLength(64),
     body("currentAccessToken").not().isEmpty().isAlphanumeric().isLength(64),
-    body("query_type").isString({ max: 32 }),
-    body("query_handle").isString(),
+    body("query_type").not().isEmpty().isString({ max: 32 }),
+    body("query_handle").not().isEmpty().isString({ max: 48 }),
     expressValidation,
     adminTokenProcessing,
+    GACheck,
     (req, res) => {
-    {
-        let GARole = await GeneralAdminRole.exists({ user: res.locals.userid });
-        if(!GARole) {
-            return res.sendStatus(401);
-        }
-    }
     var user;
     switch (req.body.query_type) {
         case 'username':
             user = await User.findOne({ username: req.body.query_handle })
-                            .select({ 
-                                _id: 1,
-                                registrationDate: 1,
-                                username: 1,
-                                meta: {
-                                    firstName: 1,
-                                    lastName: 1,
-                                    phoneNumber: 1,
-                                    CNP: 1
-                                }
-                            })
-                            .exec();
             break;
         case 'CNP': 
             user = await User.findOne({ meta: { CNP: req.body.query_handle }})
-                            .select({ 
-                                _id: 1,
-                                registrationDate: 1,
-                                username: 1,
-                                meta: {
-                                    firstName: 1,
-                                    lastName: 1,
-                                    phoneNumber: 1,
-                                    CNP: 1
-                                }
-                            })
-                            .exec();
             break;
-        case 'phonenumber': 
-            return res.sendStatus(501) // de implementat ##001
         default:
             return res.sendStatus(400);
             break;
     }
+    await user.select({ 
+        _id: 1,
+        registrationDate: 1,
+        username: 1,
+        meta: {
+            firstName: 1,
+            lastName: 1,
+            CNP: 1
+        }
+    }).exec();
     if(!user) {
         return res.sendStatus(404);
     }
@@ -120,8 +104,8 @@ router.get("/administrator-general/single",
         firstName: user.firstName,
         lastName: user.lastName,
         CNP: user.CNP, // de implementat ##002 
-        phoneNumber: user.phoneNumber,
-        registrationDate: user.registrationDate
+        registrationDate: user.registrationDate,
+        
     }
     return res.status(200).send({
         user: container
@@ -129,33 +113,40 @@ router.get("/administrator-general/single",
 
 })
 
+router.get('/administrator-general/single-roles',
+    body("unsolved_sid").not().isEmpty().isAlphanumeric().isLength(64),
+    body("solved_sid").not().isEmpty().isAlphanumeric().isLength(64),
+    body("currentAccessToken").not().isEmpty().isAlphanumeric().isLength(64),
+    expressValidation,
+    adminTokenProcessing,
+    GACheck,
+    (req, res) => {
+    
+})
+
+
 //atribuie un rol de adminstrare unui user
 router.post("/administrator-general/single",
     body("unsolved_sid").not().isEmpty().isAlphanumeric().isLength(64),
     body("currentAccessToken").not().isEmpty().isAlphanumeric().isLength(64),
-    body("query_user_handle").isString({ max: 32 }), //user username
-    body("query_localInstance_handle").isString(),  //localinstance displayName
+    body("query_user_handle").not().isEmpty().isString({ max: 32 }), //user username
+    body("query_localInstance").not().isEmpty().isString({ max: 64 }),  //localinstance displayName
     expressValidation,
     adminTokenProcessing,
+    GACheck,
     (req, res) => {
-    {
-        let GARole = await GeneralAdminRole.exists({ user: res.locals.userid });
-        if(!GARole) {
-            return res.sendStatus(401);
-        }
-    }
     var queryUser = await User.findOne({ username: req.body[query_user_handle] }).exec();
     if(!queryUser) {
         return res.sendStatus(400);
     }
-    var localInstance = await LocalInstance.findOne({ displayName: req.body[query_localInstance_handle] }).exec();
+    var localInstance = await LocalInstance.findOne({ displayName: req.body[query_localInstance] }).exec();
     if(!localInstance) {
         return res.sendStatus(400);
     }
     try {
         let adminRole = new AdminRole({ 
-            localInstance: mongoose.Types.ObjectId(localInstance._id),
-            user: mongoose.Types.ObjectId(queryUser._id)
+            localInstance: localInstance._id,
+            user: queryUser._id
         })
         await adminRole.save();
         return res.sendStatus(200);
@@ -172,13 +163,8 @@ router.get("/administrator-general/list",
     body("currentAccessToken").not().isEmpty().isAlphanumeric().isLength(64),
     expressValidation, 
     adminTokenProcessing, 
+    GACheck,
     (req, res) => {
-    {
-        let GARole = await GeneralAdminRole.exists({ user: res.locals.userid });
-        if(!GARole) {
-            return res.sendStatus(401);
-        }
-    }
     var adminRequests = AdminRequest.find({}).exec();
     let requests = adminRequests.map(item => {
         let container;
@@ -190,8 +176,7 @@ router.get("/administrator-general/list",
                             meta: {
                                 firstName: 1,
                                 lastName: 1,
-                                CNP: 1,
-                                phoneNumber: 1
+                                CNP: 1
                             }
                         })
                         .exec();
@@ -199,29 +184,10 @@ router.get("/administrator-general/list",
         container.registrationDate = iteratedUser.registrationDate;
         container.firstName = iteratedUser.meta.firstName;
         container.lastName = iteratedUser.meta.lastName;
-        container.CNP = iteratedUser.meta.CNP;
-        container.phoneNumber = iteratedUser.meta.phoneNumber;
-        
+        container.CNP = iteratedUser.meta.CNP;        
         return container;
     })
     return res.status(200).send({ requests: requests }); //left here
-})
-
-
-router.get("/user-req", (req, res) => {
-    let userQuery = User.find({});
-    userQuery.exec((err, docs) => {
-        let newDocs = docs.map(person => {
-            let container = {}
-            container.firstName = person.firstName
-            container.lastName = person.lastName
-            container.registrationDate = person.registrationDate
-            container.CNP = person.meta.CNP
-            return container;
-        })
-        res.send(newDocs);
-        console.log("sent");
-    })
 })
 
 module.exports = router;

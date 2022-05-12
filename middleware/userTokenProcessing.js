@@ -7,7 +7,7 @@ const client = redis.createClient({
     url: process.env.BACKEND_REDIS_URL,
 });
 
-const userTokenProcessing = (req, res, next) => {
+const userTokenProcessing = async (req, res, next) => {
     let redisPathString = 'user:sessions:'+req.body.session_id;
     {
         let trySession = await client.EXISTS(redisPathString)

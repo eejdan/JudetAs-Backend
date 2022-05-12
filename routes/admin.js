@@ -22,7 +22,7 @@ router.use("/administrator-local", localAdmin)
 //router.use()
 
 // ##003
-const GACheck = (req, res, next) => {
+const GACheck = async (req, res, next) => {
     let GARole = await GeneralAdminRole.exists({ user: res.locals.userid });
     if(!GARole) {
         return res.sendStatus(401);
@@ -42,7 +42,7 @@ router.get("/administrator-general/dynamicqueries",
     expressValidation,
     adminTokenProcessing,
     GACheck,
-    (req, res) => {
+    async (req, res) => {
     if(!res.locals.currentAccessToken) {
         return res.sendStatus(500);
     }
@@ -73,7 +73,7 @@ router.get("/administrator-general/single",
     expressValidation,
     adminTokenProcessing,
     GACheck,
-    (req, res) => {
+    async (req, res) => {
     var user;
     switch (req.body.query_type) {
         case 'username':
@@ -120,7 +120,7 @@ router.get('/administrator-general/single-roles',
     expressValidation,
     adminTokenProcessing,
     GACheck,
-    (req, res) => {
+    async (req, res) => {
     
 })
 
@@ -134,7 +134,7 @@ router.post("/administrator-general/single",
     expressValidation,
     adminTokenProcessing,
     GACheck,
-    (req, res) => {
+    async (req, res) => {
     var queryUser = await User.findOne({ username: req.body[query_user_handle] }).exec();
     if(!queryUser) {
         return res.sendStatus(400);
@@ -164,9 +164,9 @@ router.get("/administrator-general/list",
     expressValidation, 
     adminTokenProcessing, 
     GACheck,
-    (req, res) => {
+    async (req, res) => {
     var adminRequests = AdminRequest.find({}).exec();
-    let requests = adminRequests.map(item => {
+    let requests = await Promise.all(adminRequests.map(async item => {
         let container;
         let iteratedUser = 
             await User.findById(item.user)
@@ -186,7 +186,7 @@ router.get("/administrator-general/list",
         container.lastName = iteratedUser.meta.lastName;
         container.CNP = iteratedUser.meta.CNP;        
         return container;
-    })
+    }))
     return res.status(200).send({ requests: requests }); //left here
 })
 

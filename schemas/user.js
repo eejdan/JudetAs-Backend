@@ -15,7 +15,7 @@ const userSchema = new mongoose.Schema({
         firstName:{ type: String, required: true }, //+nume de mijloc inclus
         lastName: { type: String, required: true },
         CNP: { type: String, 
-            required: false, unique: true, default: '' },
+            required: false },
     }
 })
 

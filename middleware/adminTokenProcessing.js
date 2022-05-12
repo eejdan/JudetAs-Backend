@@ -14,7 +14,7 @@ const mongoose = require('mongoose')
 const { encrypt, decrypt } = require("../util/encryption");
 const generateString = require('../util/generateString');
 
-export const adminTokenProcessing = (req, res, next) => {
+const adminTokenProcessing = async (req, res, next) => {
     let redisPathString = 'admin:sessions:'+req.body.unsolved_sid;
     { //Verifica daca exista sesiunea
         let trySession = await client.EXISTS(redisPathString)

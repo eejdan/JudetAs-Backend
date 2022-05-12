@@ -7,7 +7,7 @@ const client = redis.createClient({
     url: process.env.BACKEND_REDIS_URL,
 });
 
-export function tokenProcessing(req, res, next) {
+function tokenProcessing(req, res, next) {
     if(!req.cookies['unsolved_sid']) {
         return res.sendStatus(401);
     }
@@ -20,3 +20,5 @@ export function tokenProcessing(req, res, next) {
     
     
 }
+
+module.exports = tokenProcessing

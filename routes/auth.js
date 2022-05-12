@@ -14,7 +14,6 @@ const authFindUser = require('../middleware/authFindUser');
 
 const mongoose = require('mongoose');
 const User = require('../models/User');
-const UserSession = require('../models/userSession');
 const AdminRole = require('../models/AdminRole')
 
 const redis = require('redis');
@@ -52,11 +51,6 @@ router.post('/admin/login', //returneaza response cu o sesiune (neautorizata inc
             { EX: (10 * 24 * 60 * 60) }
         )
         await client.set(redisPathString+newSessionString+':userid', user._id);
-        let session = new UserSession({
-            user: res.locals.user._id,
-            sessionString: newSessionString
-        })
-        session.save((err) => console.log(error));
 
         redisPathString = redisPathString + newSessionString + ':';
 

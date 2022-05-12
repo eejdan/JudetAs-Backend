@@ -1,5 +1,6 @@
 
 const express = require('express');
+const { body } = require('express-validator');
 const expressValidation = require('../../middleware/expressValidation');
 
 const AdminRole = require('../../models/AdminRole')
@@ -29,7 +30,7 @@ router.get('/dynamicqueries', //ANCHOR
     body("query_handle").isString(),
     expressValidation,
     adminTokenProcessing,
-    (req, res) => {
+    async (req, res) => {
 
 })
 
@@ -40,7 +41,7 @@ router.get('/requestlist', //done ANCHOR
     body("query_handle").not().isEmpty().isAlphanumeric(),
     expressValidation,
     adminTokenProcessing, 
-    (req, res) => {
+    async (req, res) => {
     if(!res.locals.currentAccessToken) {
         return res.sendStatus(500);
     }
@@ -77,7 +78,7 @@ router.get('/proofOfResidence', //ANCHOR
     body("query_localInstance").notEmpty().isAlphanumeric(), // id 
     expressValidation,
     adminTokenProcessing, 
-    (req, res) => {
+    async (req, res) => {
     if(!res.locals.currentAccessToken) return res.sendStatus(500);
     {
         let adminRole = await AdminRole.exists({
@@ -113,7 +114,7 @@ router.get('/userpreinfo', //ANCHOR
     body("query_localInstance").notEmpty().isAlphanumeric(), // id 
     expressValidation,
     adminTokenProcessing,
-    (req, res) => {
+    async (req, res) => {
     if(!res.locals.currentAccessToken) return res.sendStatus(500);
     {
         let adminRole = await AdminRole.exists({
@@ -154,7 +155,7 @@ router.get('/userinfo', //ANCHOR
     body("query_localInstance").notEmpty().isAlphanumeric(), // id 
     expressValidation,
     adminTokenProcessing,
-    (req, res) => {
+    async (req, res) => {
     if(!res.locals.currentAccessToken) return res.sendStatus(500);
     {
         let adminRole = await AdminRole.exists({
@@ -184,7 +185,7 @@ router.post('/createmod',//ANCHOR
     body("query_user_handle").isString({ max: 48 }), //username
     expressValidation,
     adminTokenProcessing,
-    (req, res) => {
+    async (req, res) => {
 
 })
 
@@ -194,7 +195,7 @@ router.get('/articlelist', //ANCHOR
     body("query_localInstance").isString({ max: 72 }), // displayName
     expressValidation,
     adminTokenProcessing,
-    (req, res) => {
+    async (req, res) => {
         
     }
 )

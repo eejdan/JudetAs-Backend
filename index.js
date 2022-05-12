@@ -48,4 +48,9 @@ app.get('/api/', (req, res) => {
 
 //localinstance display names will have max 64 chars
 //usernames will have max 48 chars
-app.listen(process.env.BACKEND_PORT)
+app.listen(process.env.BACKEND_PORT, () => {
+    console.log("Backend server started")
+})
+setTimeout(()=> {
+    console.log("Alive after 5 seconds")
+}, 5000)

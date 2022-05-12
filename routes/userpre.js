@@ -6,6 +6,7 @@ const express = require('express');
 
 const { body } = require("express-validator");
 const expressValidation = require('../middleware/expressValidation');
+const userpreSessionProcessing = require('../middleware/userpreSessionProcessing')
 
 const multer = require('multer')
 const storage = multer.diskStorage({
@@ -30,6 +31,7 @@ const LocalInstance = require('../schemas/LocalInstance')
 
 const { sendEmailConfirmation } = require('../mailer') 
 
+
 const redis = require('redis');
 const client = redis.createClient({ 
     username: process.env.BACKEND_REDIS_USERNAME, 
@@ -41,7 +43,7 @@ const router = express.Router();
 //tbd finds localinstance ANCHOR
 router.post('/register/address-dynamicqueries', 
     body('query_handle').notEmpty().isAlphanumeric().trim().isLength({ max: 200 }), 
-    (req, res) => {
+    async (req, res) => {
     var localInstances = await LocalInstance.find({
         $text: { $search: req.body.query_handle }
     }).select({
@@ -49,7 +51,7 @@ router.post('/register/address-dynamicqueries',
     }).lean().exec();
     if(!localInstances)
         return res.sendStatus(404)
-    var instanceMap = localInstances.map(instance => {
+    var instanceMap = await Promise.all(localInstances.map(async instance => {
         let container = {}
         if(instance.rank != 0) {
             container.parents = [];
@@ -69,7 +71,7 @@ router.post('/register/address-dynamicqueries',
         container.displayName = instance.displayName;
         container.instanceid = instance._id;
         return container;
-    })
+    }))
     return res.status(200).send({
         instances: instanceMap
     });
@@ -83,7 +85,7 @@ router.post('/register',
     body('lastName').notEmpty().isAlpha().isLength({ max: 64 }).trim(),
     body('address').notEmpty().isAlphanumeric().trim().isLength({ max: 200 }),
     expressValidation, 
-    (req, res) => {
+    async (req, res) => {
     {
         //tbd test password strength
         let tryUser = await User.exists({ username: req.body.username })
@@ -179,7 +181,7 @@ router.get('/register/email-confirmation', //done
     body('session_id').not().isEmpty().isAlphanumeric().isLength(64),
     expressValidation,
     userpreSessionProcessing,
-    (req, res) => {
+    async (req, res) => {
     if(!req.body.regid) return res.sendStatus(500);
     var regReq = await UserRegisterRequest.findById(res.locals.regid);
     if(!regReq.emailConfirmation.isConfirmed) {
@@ -192,7 +194,7 @@ router.post('/register/send-email-confirmation', //done ANCHOR
     body('session_id').not().isEmpty().isAlphanumeric().isLength(64),
     expressValidation,
     userpreSessionProcessing,
-    (req, res) => {
+    async (req, res) => {
     var regReq = await UserRegisterRequest.findById(res.locals.regid);
     if(!regReq) return res.sendStatus(500);
     if(!regReq.emailConfirmation.lastSent < (Date.now() - (15*60*1000))) {
@@ -233,7 +235,7 @@ router.post('/register/prepare-media-upload',
     body('session_id').not().isEmpty().isAlphanumeric().isLength(64),
     expressValidation,
     userpreSessionProcessing,
-    (req, res) => {
+    async (req, res) => {
     if(!req.body.regid) return res.sendStatus(500);
     var regReq = await UserRegisterRequest.findById(res.locals.regid);
     if(!regReq.emailConfirmation.isConfirmed) {
@@ -262,12 +264,12 @@ router.post('/register/prepare-media-upload',
     return res.status(200).send(newBufferString)
 })
 router.post('/register/media-upload', //done ANCHOR
-    body('buffer_id').notEmpty().isAlphanumeric.isLength(64),
+    body('buffer_id').notEmpty().isAlphanumeric().isLength(64),
     body('session_id').notEmpty().isAlphanumeric().isLength(64),
     expressValidation,
     upload.single('image'),
     userpreSessionProcessing,
-    (req, res) => {
+    async (req, res) => {
     if(!req.body.regid) return res.sendStatus(500);
     var regReq = await UserRegisterRequest.findById(res.locals.regid);
     if(!regReq.emailConfirmation.isConfirmed) {
@@ -307,7 +309,7 @@ router.get('/register/reviewable',  // ANCHOR
     body('session_id').not().isEmpty().isAlphanumeric().isLength(64),
     expressValidation,
     userpreSessionProcessing,
-    (req, res) => {
+    async (req, res) => {
     if(!req.body.regid) return res.sendStatus(500);
     var regReq = await UserRegisterRequest.findById(res.locals.regid);
     if(!regReq) {
@@ -319,7 +321,7 @@ router.get('/register/reviewable',  // ANCHOR
     return res.sendStatus(200);
 })
 router.post('/register/confirm-reject/:crid', //done ANCHOR
-    (req, res) => {
+    async (req, res) => {
     let status = '404';
     let regReq = await UserRegisterRequest.findOne({
         emailConfirmation: {

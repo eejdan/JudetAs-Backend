@@ -6,14 +6,13 @@ const adminRequestSchema = new mongoose.Schema({
         type: Date,
         default: Date.now()
     },
+    reviewStatus: { // -1 -> rejected; 0 -> under review; 1 -> accepted
+        type: Number,
+        default: 0
+    },
     user: {
         type: mongoose.SchemaTypes.ObjectId,
         required: true,
-        unique: true
-    },
-    idNumber: {
-        type: String,
-        required: false,
         unique: true
     }
 }, {

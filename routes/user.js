@@ -2,6 +2,7 @@
 const fs = require('fs').promises;
 
 const express = require('express');
+const { body } = require('express-validator');
 const expressValidation = require('../middleware/expressValidation');
 
 const userTokenProcessing = require('../middleware/userTokenProcessing');
@@ -30,7 +31,7 @@ router.post('/media-upload', (req, res) => {
     body('buffer_id').not().isEmpty().isAlphanumeric().isLength(64)
     expressValidation,
     userTokenProcessing,
-    (req, res) => {
+    async (req, res) => {
 // ##002 user:{userid}:buffers:{bufferid}:left = leftToUpload count
     }
 }) 
@@ -79,58 +80,58 @@ router.post('/posts/create',
 
 });
 router.post('/posts/reaction', 
-body('session_id').not().isEmpty().isAlphanumeric().isLength(64),
-body('currentAccessToken').not().isEmpty().isAlphanumeric().isLength(64),
-body('query_parent').not().isEmpty().isAlphanumeric(),
-body('query_reaction_type').not().isEmpty().isAlphanumeric(),
-body('query_reaction_score').not().isEmpty().isNumeric({ no_symbols: true }).isLength({ max: 3 }),
-async (req, res) => {
-if(!res.locals.userid) {
-    res.sendStatus(500);
-}
-let instanceId;
-{
-    let parentPost = await UserArticle.findById(req.body.query_parent);
-    if(!parentPost) {
-        return res.sendStatus(404);
+    body('session_id').not().isEmpty().isAlphanumeric().isLength(64),
+    body('currentAccessToken').not().isEmpty().isAlphanumeric().isLength(64),
+    body('query_parent').not().isEmpty().isAlphanumeric(),
+    body('query_reaction_type').not().isEmpty().isAlphanumeric(),
+    body('query_reaction_score').not().isEmpty().isNumeric({ no_symbols: true }).isLength({ max: 3 }),
+    async (req, res) => {
+    if(!res.locals.userid) {
+        res.sendStatus(500);
     }
-    let localInstance = await LocalInstance.findById(parentPost.localInstance);
-    if(!localInstance) {
-        return res.sendStatus(500); //removable after tested app integrity
+    let instanceId;
+    {
+        let parentPost = await UserArticle.findById(req.body.query_parent);
+        if(!parentPost) {
+            return res.sendStatus(404);
+        }
+        let localInstance = await LocalInstance.findById(parentPost.localInstance);
+        if(!localInstance) {
+            return res.sendStatus(500); //removable after tested app integrity
+        }
+        let urole = await UserRole.findOne({
+            localInstance: localInstance._id,
+            user: res.locals.userid
+        })
+        if(!urole) {
+            return res.sendStatus(404); // not found within user's authorized instances
+        }
+        instanceId = localInstance._id;
     }
-    let urole = await UserRole.findOne({
-        localInstance: localInstance._id,
-        user: res.locals.userid
+    let reaction = new UserReaction({
+        user: res.locals.userid,
+        parent: req.body.query_parent,
     })
-    if(!urole) {
-        return res.sendStatus(404); // not found within user's authorized instances
+    let r = 0;
+    switch (req.body.query_reaction_type) {
+        case 'rating':
+            r = parseInt(req.body.query_reaction_score);
+            if(r>0) reaction.rating = 1; else reaction.rating = -1;
+            break;
+        case 'importance':
+            r = parseInt(req.body.query_reaction_score);
+            if(r>0) reaction.importance = 1; else reaction.importance = -1;
+            break;
+        case 'tracked': 
+            r = parseInt(req.body.query_reaction_score);
+            if(r>0) reaction.tracked = true; else reaction.tracked = false
+            break;
+        default:
+            return res.sendStatus(400);
+            break;
     }
-    instanceId = localInstance._id;
-}
-let reaction = new UserReaction({
-    user: res.locals.userid,
-    parent: req.body.query_parent,
-})
-let r = 0;
-switch (req.body.query_reaction_type) {
-    case 'rating':
-        r = parseInt(req.body.query_reaction_score);
-        if(r>0) reaction.rating = 1; else reaction.rating = -1;
-        break;
-    case 'importance':
-        r = parseInt(req.body.query_reaction_score);
-        if(r>0) reaction.importance = 1; else reaction.importance = -1;
-        break;
-    case 'tracked': 
-        r = parseInt(req.body.query_reaction_score);
-        if(r>0) reaction.tracked = true; else reaction.tracked = false
-        break;
-    default:
-        return res.sendStatus(400);
-        break;
-}
-await reaction.save();
-return res.sendStatus(200);
+    await reaction.save();
+    return res.sendStatus(200);
 });
 
 
@@ -183,7 +184,7 @@ router.post('/comments/create-reply',
     body('query_comment').not().isEmpty().isAlphanumeric().isLength({ max: 450 }),
     expressValidation,
     userTokenProcessing,
-    (req, res) => {
+    async (req, res) => {
     if(!res.locals.userid) {
         res.sendStatus(500);
     }

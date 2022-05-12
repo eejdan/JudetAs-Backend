@@ -7,7 +7,7 @@ const client = redis.createClient({
 });
 
 
-const userpreSessionProcessing = (req, res, next) => {
+const userpreSessionProcessing = async (req, res, next) => {
     let redisPathString = 'userpre:sessions:'+req.body.session_id;
     {
         let trySession = await client.EXISTS(redisPathString)
@@ -24,3 +24,5 @@ const userpreSessionProcessing = (req, res, next) => {
     }
     return next();
 }
+
+module.exports = userpreSessionProcessing;

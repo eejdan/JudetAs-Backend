@@ -29,7 +29,7 @@ export const adminTokenProcessing = (req, res, next) => {
         if(!uid) {
             return res.sendStatus(500);
         }
-        res.locals.userid = uid;
+        res.locals.userid = uid; // important
     }
     { //Verifica daca exista tokenul de access si daca este cel curent
         let tryToken = await client.EXISTS(redisPathString+':tokens:'+req.body.currentAccessToken)
@@ -62,6 +62,7 @@ export const adminTokenProcessing = (req, res, next) => {
     }
     let newTokenString;
     do {
+        found = true;
         newTokenString = generateString(64);
         let tryStringQuery = await client.EXISTS(
             redisPathString + ':tokens:' + newTokenString
@@ -76,6 +77,7 @@ export const adminTokenProcessing = (req, res, next) => {
     await client.set(redisPathString+":tokens:last-date", Date.now());
     await client.set(redisPathString+':authorized', true, { EX: (30 * 60)});
     res.locals.currentAccessToken = newTokenString;
+    res.append('newAccessToken', newTokenString)
     next();
 }
 

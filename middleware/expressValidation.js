@@ -4,7 +4,7 @@ function expressValidation(req, res, next) {
     let errors = validationResult(req);
     if(!errors.isEmpty()) {
         console.log('validation failed:'+JSON.stringify(req.body))
-        console.log(errors);
+        console.log(errors); // for debugging only
         return res.sendStatus(400);
     }
     next();

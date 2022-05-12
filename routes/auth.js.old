@@ -83,6 +83,7 @@ router.post('/authorize',
         var newAccessTokenString;
         let found = true;
         do {
+            found = true;
             newAccessTokenString = generateString(64);
             keyString = 'sessionAccessTokens:'+sid+':'
             let tryString = await client.get(keyString+newAccessTokenString);

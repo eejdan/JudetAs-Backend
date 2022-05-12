@@ -27,6 +27,8 @@ async function main() {
 const app = express();
 const auth = require("./routes/auth");
 const admin = require("./routes/admin");
+const user = require("./routes/user")
+const userpre = require("./routes/userpre")
 
 app.use(helmet());
 app.use(cookieParser());
@@ -38,11 +40,12 @@ app.use((req, res, next) =>{
 })
 app.use('/api/auth', auth);
 app.use('/api/admin', admin);
-
+app.use('/api/user', user);
+app.use('/api/userpre', userpre);
 app.get('/api/', (req, res) => {
     res.send("test");
 })
 
-
+//localinstance display names will have max 64 chars
 //usernames will have max 48 chars
 app.listen(process.env.BACKEND_PORT)

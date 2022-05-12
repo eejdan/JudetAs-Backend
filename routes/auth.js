@@ -29,7 +29,7 @@ router.post('/admin/login', //returneaza response cu o sesiune (neautorizata inc
     body('username').not().isEmpty().isAlphanumeric().isLength({ min: 5, max: 48 }), 
     body('password').not().isEmpty().isString().isLength({ min: 5, max: 48 }),
     expressValidation,
-    authFindUser, 
+    authFindUser, //finds user returns 401 if not found
     async (req, res) => {
         let found = true;
         let newSessionString;
@@ -45,33 +45,21 @@ router.post('/admin/login', //returneaza response cu o sesiune (neautorizata inc
                 found = false;
             }
         }while(!found);
+
+        redisPathString = redisPathString + newSessionString
         /* in momentul ce expira(dispare) cheia admin:sessions:${sessionString} 
         inseamna ca sesiunea nu mai este valida (expired) */
-        await client.set(redisPathString+newSessionString, true, 
-            { EX: (10 * 24 * 60 * 60) }
-        )
-        await client.set(redisPathString+newSessionString+':userid', user._id);
+        
+        await client.set(redisPathString, true, { 
+                EX: (10 * 24 * 60 * 60) 
+        })
+        await client.set(redisPathString+':userid', res.locals.user._id);
+        await client.set(redisPathString+":hitlist", 0);
 
-        redisPathString = redisPathString + newSessionString + ':';
-
-        let newTokenString;
-        do {
-            found = true;
-            newTokenString = generateString(64);
-            let tryStringQuery = await client.EXISTS(
-                redisPathString + ':tokens:' + newTokenString
-            )
-            if(tryStringQuery) {
-                found = false;
-            }
-        } while(!found)
-        redisPathString = redisPathString + newSessionString + ':'
-        await client.set(redisPathString+"tokens:"+newTokenString, true);
-        await client.set(redisPathString+"tokens:last", newTokenString);
-        await client.set(redisPathString+"tokens:last-date", Date.now());
         res.cookie('unsolved_sid', newSessionString)
+        
         return res.status(200).send({
-            currentAccessToken: newTokenString,
+            session_id: newSessionString,
         })
     }
 )
@@ -81,21 +69,36 @@ router.post('/admin/authorize', //ia sesiunea si sesiunea codificata cu pinul re
     body("solved_sid").not().isEmpty().isAlphanumeric().isLength(64),
     expressValidation,
     async (req, res) => {
-    let hashObject = crypto.createHash("sha256");
-
     let redisPathString = 'admin:sessions:'+req.body.unsolved_sid;
     { //Verifica daca exista sesiunea
         let trySession = await client.EXISTS(redisPathString)
         if(!trySession) {
-            return res.status(401).send({
-                authFail: 'session'
-            });
+            return res.sendStatus(410);
+        }
+    }
+    { // invalidate session after failed attempts
+        let tryHitList = await client.EXISTS(redisPathString+':hitlist');
+        if(!tryHitList) {
+            await client.set(redisPathString+":hitlist", 0);
+        } else {
+            await client.INCR(redisPathString+':hitlist');
+            if(parseInt(await client.get(redisPathString+':hitlist')) > 5) {
+                await client.DEL(redisPathString);
+            } 
         }
     }
     //Gaseste userul sesiunii
-    let user = await User.findById(await client.get(redisPathString+':userid')).exec();
+    var user = await User.findById(await client.get(redisPathString+':userid')).exec();
     if(!user) {
         return res.sendStatus(400);
+    }
+    {
+        let tryAdminRole = await AdminRole.findOne({
+            user: user._id
+        })
+        if(!tryAdminRole) {
+            return res.sendStatus(403);
+        }
     }
     {
         let hashObject = crypto.createHash("sha256");
@@ -103,12 +106,7 @@ router.post('/admin/authorize', //ia sesiunea si sesiunea codificata cu pinul re
             return res.sendStatus(401)
         }
     }
-    let tryAdminRole = await AdminRole.findOne({
-        user: user._id
-    })
-    if(!tryAdminRole) {
-        return res.sendStatus(401);
-    }
+    await client.del(redisPathString + ':hitlist');
     let found = true;
     let newTokenString;
         do {

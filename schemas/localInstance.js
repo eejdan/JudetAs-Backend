@@ -1,8 +1,8 @@
 
 const mongoose = require("mongoose");
 
-const localInstanceSchema = new mongoose.Schema({
-    displayName: { 
+var localInstanceSchema = new mongoose.Schema({
+    displayName: { // max 64 char
         type: String, 
         required: true,
         unique: true
@@ -33,5 +33,7 @@ const localInstanceSchema = new mongoose.Schema({
 }, {
     collection: 'localInstances'
 })
+
+localInstanceSchema.index({ displayName: "text"})
 
 module.exports = localInstanceSchema;

@@ -12,12 +12,12 @@ const generateString = require('../util/generateString');
 const expressValidation = require('../middleware/expressValidation');
 const authFindUser = require('../middleware/authFindUser');
 
+const mongoose = require('mongoose');
 const User = require('../models/User');
 const UserSession = require('../models/userSession');
 const AdminRole = require('../models/AdminRole')
 
 const redis = require('redis');
-const mongoose = require('mongoose');
 const client = redis.createClient({ 
     username: process.env.BACKEND_REDIS_USERNAME, 
     password: process.env.BACKEND_REDIS_PASSWORD,
@@ -36,6 +36,7 @@ router.post('/admin/login', //returneaza response cu o sesiune (neautorizata inc
         let newSessionString;
         let redisPathString = "admin:"+"sessions:";
         do {
+            found = true;
             newSessionString = generateString(64);
             let tryStringQuery = await client.EXISTS(
                 redisPathString
@@ -52,7 +53,7 @@ router.post('/admin/login', //returneaza response cu o sesiune (neautorizata inc
         )
         await client.set(redisPathString+newSessionString+':userid', user._id);
         let session = new UserSession({
-            user: mongoose.Types.ObjectId(res.locals.user._id),
+            user: res.locals.user._id,
             sessionString: newSessionString
         })
         session.save((err) => console.log(error));
@@ -61,6 +62,7 @@ router.post('/admin/login', //returneaza response cu o sesiune (neautorizata inc
 
         let newTokenString;
         do {
+            found = true;
             newTokenString = generateString(64);
             let tryStringQuery = await client.EXISTS(
                 redisPathString + ':tokens:' + newTokenString
@@ -108,7 +110,7 @@ router.post('/admin/authorize', //ia sesiunea si sesiunea codificata cu pinul re
         }
     }
     let tryAdminRole = await AdminRole.findOne({
-        user: mongoose.Types.ObjectId(user._id)
+        user: user._id
     })
     if(!tryAdminRole) {
         return res.sendStatus(401);
@@ -116,6 +118,7 @@ router.post('/admin/authorize', //ia sesiunea si sesiunea codificata cu pinul re
     let found = true;
     let newTokenString;
         do {
+            found = true;
             newTokenString = generateString(64);
             let tryStringQuery = await client.EXISTS(
                 redisPathString + ':tokens:' + newTokenString
@@ -141,13 +144,14 @@ router.post('/user/login',
     body('password').not().isEmpty().isString().isLength({ min: 5, max: 48 }),
     expressValidation,
     authFindUser, //pasword verification is in this middleware
-    async (req, res) => {
+    async (req, res) => { //tbd allow userpre logins
     let redisPathString = 'user:sessions:';
     let newSessionString;
     let newTokenString;
     {
         let found = true;
         do {
+            found = true;
             newSessionString = generateString(64);
             let tryStringQuery = await client.EXISTS(
                 redisPathString
@@ -157,7 +161,8 @@ router.post('/user/login',
                 found = false;
             }
         }while(!found);
-        do { // to verify all redis paths
+        do { //tbd verify all redis paths
+            found = true;
             newTokenString = generateString(64);
             let tryStringQuery = await client.EXISTS(
                 redisPathString

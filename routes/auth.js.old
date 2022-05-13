@@ -2,7 +2,7 @@ if (require.main === module) {
     require('dotenv').config();
 }
 const express = require('express')
-const { body } = require('express-validator');
+const { check } = require('express-validator');
 const crypto = require("crypto");
 
 const { encrypt, decrypt } = require('../util/encryption');
@@ -18,16 +18,16 @@ const UserSession = require("../schemas/userSession")
 
 const redis = require('redis');
 const client = redis.createClient({ 
-    username: process.env.BACKEND_REDIS_USERNAME, 
-    password: process.env.BACKEND_REDIS_PASSWORD,
-    url: process.env.BACKEND_REDIS_URL,
+    url: 'redis://default:'+process.env.BACKEND_REDIS_DEFPASSWORD+'@'+process.env.BACKEND_REDIS_URL,
 });
+async function initClient() { await client.connect();
+client.stream.setKeepAlive(true, 60000); } initClient();
 const router = express.Router();
 
 router.post('/login', 
-    body('username').not().isEmpty().isAlphanumeric().isLength({ min: 5, max: 48 }), 
-    body('password').not().isEmpty().isString().isLength({ min: 5, max: 48 }),
-    body('').not().isEmpty().isBoolean(),
+    check('username').not().isEmpty().isAlphanumeric().isLength({ min: 5, max: 48 }), 
+    check('password').not().isEmpty().isString().isLength({ min: 5, max: 48 }),
+    check('').not().isEmpty().isBoolean(),
     expressValidation,
     async (req, res) => {
         let hashObject = crypto.createHash("sha256");
@@ -111,7 +111,8 @@ console.log("pre");
 (async () => {
     client.on('error', (err) => console.log('Redis Client Error', err));
     client.on('connect', () => console.log('Redis client connected'));
-    await client.connect();
+    async function initClient() { await client.connect();
+client.stream.setKeepAlive(true, 60000); } initClient();
 })();
 
 module.exports = router;

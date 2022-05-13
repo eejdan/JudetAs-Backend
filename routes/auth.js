@@ -3,7 +3,7 @@ if (require.main === module) {
 }
 
 const express = require('express');
-const { body } = require('express-validator');
+const { check } = require('express-validator');
 const crypto = require("crypto");
 
 const { encrypt, decrypt } = require('../util/encryption');
@@ -14,30 +14,37 @@ const authFindUser = require('../middleware/authFindUser');
 
 const mongoose = require('mongoose');
 const User = require('../models/User');
-const AdminRole = require('../models/AdminRole')
+const AdminRole = require('../models/AdminRole');
+const GeneralAdminRole = require('../models/GeneralAdminRole');
 
-const redis = require('redis');
-const client = redis.createClient({ 
-    username: process.env.BACKEND_REDIS_USERNAME, 
-    password: process.env.BACKEND_REDIS_PASSWORD,
-    url: process.env.BACKEND_REDIS_URL,
-});
+const client = require('../redisconnection');
 
 const router = express.Router();
 
 router.post('/admin/login', //returneaza response cu o sesiune (neautorizata inca)
-    body('username').not().isEmpty().isAlphanumeric().isLength({ min: 5, max: 48 }), 
-    body('password').not().isEmpty().isString().isLength({ min: 5, max: 48 }),
+    check('username').not().isEmpty().isAlphanumeric().isLength({ min: 5, max: 48 }), 
+    check('password').not().isEmpty().isString().isLength({ min: 5, max: 48 }),
     expressValidation,
     authFindUser, //finds user returns 401 if not found
     async (req, res) => {
+        {
+            let tryAdminRole = await AdminRole.findOne({
+                user: res.locals.user._id
+            })
+            if(!tryAdminRole) {
+                let tryGeneralAdminRole = await GeneralAdminRole.findOne({
+                    user: res.locals.user._id
+                })
+                if(!tryGeneralAdminRole) return res.sendStatus(403);
+            }
+        }
         let found = true;
         let newSessionString;
         let redisPathString = "admin:"+"sessions:";
         do {
             found = true;
             newSessionString = generateString(64);
-            let tryStringQuery = await client.EXISTS(
+            let tryStringQuery = await client.exists(
                 redisPathString
                 +newSessionString
             )
@@ -50,14 +57,14 @@ router.post('/admin/login', //returneaza response cu o sesiune (neautorizata inc
         /* in momentul ce expira(dispare) cheia admin:sessions:${sessionString} 
         inseamna ca sesiunea nu mai este valida (expired) */
         
-        await client.set(redisPathString, true, { 
-                EX: (10 * 24 * 60 * 60) 
-        })
+        await client.set(redisPathString, true,
+                'EX', (10 * 24 * 60 * 60) 
+        )
         await client.set(redisPathString+':userid', res.locals.user._id);
         await client.set(redisPathString+":hitlist", 0);
 
         res.cookie('unsolved_sid', newSessionString)
-        
+
         return res.status(200).send({
             session_id: newSessionString,
         })
@@ -65,25 +72,25 @@ router.post('/admin/login', //returneaza response cu o sesiune (neautorizata inc
 )
 router.post('/admin/authorize', //ia sesiunea si sesiunea codificata cu pinul returneaza un access token 
     //body checks here TBD
-    body("unsolved_sid").not().isEmpty().isAlphanumeric().isLength(64),
-    body("solved_sid").not().isEmpty().isAlphanumeric().isLength(64),
+    check("unsolved_sid").not().isEmpty().isAlphanumeric().isLength(64),
+    check("solved_sid").not().isEmpty().isAlphanumeric().isLength(64),
     expressValidation,
     async (req, res) => {
     let redisPathString = 'admin:sessions:'+req.body.unsolved_sid;
     { //Verifica daca exista sesiunea
-        let trySession = await client.EXISTS(redisPathString)
+        let trySession = await client.exists(redisPathString)
         if(!trySession) {
             return res.sendStatus(410);
         }
     }
     { // invalidate session after failed attempts
-        let tryHitList = await client.EXISTS(redisPathString+':hitlist');
+        let tryHitList = await client.exists(redisPathString+':hitlist');
         if(!tryHitList) {
             await client.set(redisPathString+":hitlist", 0);
         } else {
-            await client.INCR(redisPathString+':hitlist');
+            await client.incr(redisPathString+':hitlist');
             if(parseInt(await client.get(redisPathString+':hitlist')) > 5) {
-                await client.DEL(redisPathString);
+                await client.del(redisPathString);
             } 
         }
     }
@@ -97,12 +104,16 @@ router.post('/admin/authorize', //ia sesiunea si sesiunea codificata cu pinul re
             user: user._id
         })
         if(!tryAdminRole) {
-            return res.sendStatus(403);
+            let tryGeneralAdminRole = await GeneralAdminRole.findOne({
+                user: user._id
+            })
+            if(!tryGeneralAdminRole) return res.sendStatus(403);
         }
     }
     {
         let hashObject = crypto.createHash("sha256");
-        if(req.body['solved-sid'] != hashObject.update(sid+decrypt(user.pin)).digest('hex')) {
+        let hash = hashObject.update(req.body['unsolved_sid']+decrypt(user.pin)).digest('hex');
+        if(req.body['solved_sid'] != hash) {
             return res.sendStatus(401)
         }
     }
@@ -112,7 +123,7 @@ router.post('/admin/authorize', //ia sesiunea si sesiunea codificata cu pinul re
         do {
             found = true;
             newTokenString = generateString(64);
-            let tryStringQuery = await client.EXISTS(
+            let tryStringQuery = await client.exists(
                 redisPathString + ':tokens:' + newTokenString
             )
             if(tryStringQuery) {
@@ -121,7 +132,7 @@ router.post('/admin/authorize', //ia sesiunea si sesiunea codificata cu pinul re
     } while(!found);
     await client.set(redisPathString + ':tokens:' + newTokenString, true)
     await client.set(redisPathString + ':tokens:last', newTokenString)
-    await client.set(redisPathString + ':authorized', true, { EX: (30 * 60) })
+    await client.set(redisPathString + ':authorized', true, 'EX', (30 * 60))
     return res.status(201).send({
         currentAccessToken: newTokenString
     })
@@ -132,8 +143,8 @@ router.post('/admin/authorize', //ia sesiunea si sesiunea codificata cu pinul re
 //user:sessions:${sessionString} set and expire after 10 days
 
 router.post('/user/login', 
-    body('username').not().isEmpty().isAlphanumeric().isLength({ min: 5, max: 48 }), 
-    body('password').not().isEmpty().isString().isLength({ min: 5, max: 48 }),
+    check('username').not().isEmpty().isAlphanumeric().isLength({ min: 5, max: 48 }), 
+    check('password').not().isEmpty().isString().isLength({ min: 5, max: 48 }),
     expressValidation,
     authFindUser, //pasword verification is in this middleware
     async (req, res) => { //tbd allow userpre logins
@@ -145,7 +156,7 @@ router.post('/user/login',
         do {
             found = true;
             newSessionString = generateString(64);
-            let tryStringQuery = await client.EXISTS(
+            let tryStringQuery = await client.exists(
                 redisPathString
                 +newSessionString
             )
@@ -156,7 +167,7 @@ router.post('/user/login',
         do { //tbd verify all redis paths
             found = true;
             newTokenString = generateString(64);
-            let tryStringQuery = await client.EXISTS(
+            let tryStringQuery = await client.exists(
                 redisPathString
                 +newSessionString+ ':tokens:' +newTokenString
             )
@@ -165,7 +176,7 @@ router.post('/user/login',
             }
         }while(!found);
         redisPathString = redisPathString+newSessionString;
-        await client.set(redisPathString, true, { EX: (10 * 24 * 60 * 60)});
+        await client.set(redisPathString, true, 'EX', (10 * 24 * 60 * 60));
         await client.set(redisPathString+':tokens:'+newTokenString, true)
         await client.set(redisPathString+':userid', res.locals.user._id);
         await client.set(redisPathString+':tokens:last', newTokenString);

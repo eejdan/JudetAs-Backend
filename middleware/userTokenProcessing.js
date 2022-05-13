@@ -1,16 +1,12 @@
 
 
 const redis = require('redis');
-const client = redis.createClient({ 
-    username: process.env.BACKEND_REDIS_USERNAME, 
-    password: process.env.BACKEND_REDIS_PASSWORD,
-    url: process.env.BACKEND_REDIS_URL,
-});
 
+const client = require('../redisconnection');
 const userTokenProcessing = async (req, res, next) => {
     let redisPathString = 'user:sessions:'+req.body.session_id;
     {
-        let trySession = await client.EXISTS(redisPathString)
+        let trySession = await client.exists(redisPathString)
         if(!trySession) {
             return res.sendStatus(401);
         }
@@ -23,13 +19,13 @@ const userTokenProcessing = async (req, res, next) => {
         res.locals.userid = uid; // important
     }
     {
-        let tryToken = await client.EXISTS(
+        let tryToken = await client.exists(
             redisPathString + ':tokens:' + req.body.currentAccessToken
         )
         if(!tryToken) {
             return res.sendStatus(401);
         }
-        tryToken = await client.GET(
+        tryToken = await client.get(
             redisPathString + ':tokens:last'
         )
         if(tryToken != req.body.currentAccessToken) {
@@ -41,7 +37,7 @@ const userTokenProcessing = async (req, res, next) => {
     do {
         found = true;
         newTokenString = generateString(64);
-        let tryStringQuery = await client.EXISTS(
+        let tryStringQuery = await client.exists(
             redisPathString + ':tokens:' + newTokenString
         )
         if(tryStringQuery) {

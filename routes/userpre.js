@@ -4,7 +4,7 @@ const generateString = require('../util/generateString');
 
 const express = require('express');
 
-const { body } = require("express-validator");
+const { check } = require("express-validator");
 const expressValidation = require('../middleware/expressValidation');
 const userpreSessionProcessing = require('../middleware/userpreSessionProcessing')
 
@@ -32,17 +32,12 @@ const LocalInstance = require('../schemas/LocalInstance')
 const { sendEmailConfirmation } = require('../mailer') 
 
 
-const redis = require('redis');
-const client = redis.createClient({ 
-    username: process.env.BACKEND_REDIS_USERNAME, 
-    password: process.env.BACKEND_REDIS_PASSWORD,
-    url: process.env.BACKEND_REDIS_URL,
-});
+const client = require('../redisconnection');
 
 const router = express.Router();
 //tbd finds localinstance ANCHOR
 router.post('/register/address-dynamicqueries', 
-    body('query_handle').notEmpty().isAlphanumeric().trim().isLength({ max: 200 }), 
+    check('query_handle').notEmpty().isAlphanumeric().trim().isLength({ max: 200 }), 
     async (req, res) => {
     var localInstances = await LocalInstance.find({
         $text: { $search: req.body.query_handle }
@@ -57,9 +52,9 @@ router.post('/register/address-dynamicqueries',
             container.parents = [];
             let currentRank = instance.rank;
             let pressRank = parseInt(instance.rank);
-            while(currentRank != 0) {
+            while(currentRank > 0) {
                 let li = await LocalInstance.findById(instance.parentInstance)
-                    .select({ _id: 0, displayName: 1, rank: 1}).lean().exec();
+                    .select({ _id: 1, displayName: 1, rank: 1}).lean().exec();
                 currentRank = li.rank;
                 container.parents[container.parents.length] = li.displayName;
                 pressRank--;
@@ -78,12 +73,12 @@ router.post('/register/address-dynamicqueries',
 })
 // cnp will be filled in by administrator ANCHOR
 router.post('/register', 
-    body('username').notEmpty().isAlphanumeric().isLength({ min: 5, max: 64 }).trim(),
-    body('password').not().contains(' ').not().isEmpty().isString().isLength({ min: 5, max: 48 }),
-    body('email').notEmpty().isEmail().trim().isLength({ max: 320 }),
-    body('firstName').notEmpty().isAlpha().isLength({ max: 64 }).trim(),
-    body('lastName').notEmpty().isAlpha().isLength({ max: 64 }).trim(),
-    body('address').notEmpty().isAlphanumeric().trim().isLength({ max: 200 }),
+    check('username').notEmpty().isAlphanumeric().isLength({ min: 5, max: 64 }).trim(),
+    check('password').not().contains(' ').not().isEmpty().isString().isLength({ min: 5, max: 48 }),
+    check('email').notEmpty().isEmail().trim().isLength({ max: 320 }),
+    check('firstName').notEmpty().isAlpha().isLength({ max: 64 }).trim(),
+    check('lastName').notEmpty().isAlpha().isLength({ max: 64 }).trim(),
+    check('address').notEmpty().isAlphanumeric().trim().isLength({ max: 200 }),
     expressValidation, 
     async (req, res) => {
     {
@@ -156,7 +151,7 @@ router.post('/register',
     do {
         found = true;
         newSessionString = generateString(64);
-        let tryStringQuery = await client.EXISTS(
+        let tryStringQuery = await client.exists(
             redisPathString
             +newSessionString
         )
@@ -166,7 +161,7 @@ router.post('/register',
     }while(!found);
     redisPathString = redisPathString+newSessionString;
     //pre session will expire in 30 days 
-    await client.set(redisPathString, true, { EX: (30 * 24 * 60 * 60)});
+    await client.set(redisPathString, true, 'EX', (30 * 24 * 60 * 60));
 /*     await client.set(redisPathString+':confirmed', false)  ??????*/ 
     await client.set(redisPathString+':regid', regRequest._id);
     res.cookie("session_id", newSessionString)
@@ -178,7 +173,7 @@ router.post('/register',
 // check if email was confirmed //informational
 // ANCHOR
 router.get('/register/email-confirmation', //done
-    body('session_id').not().isEmpty().isAlphanumeric().isLength(64),
+    check('session_id').not().isEmpty().isAlphanumeric().isLength(64),
     expressValidation,
     userpreSessionProcessing,
     async (req, res) => {
@@ -191,7 +186,7 @@ router.get('/register/email-confirmation', //done
     //left here tbd try confirmation;frontend /userpre/confirm/link variable +reject; test register 
 })
 router.post('/register/send-email-confirmation', //done ANCHOR
-    body('session_id').not().isEmpty().isAlphanumeric().isLength(64),
+    check('session_id').not().isEmpty().isAlphanumeric().isLength(64),
     expressValidation,
     userpreSessionProcessing,
     async (req, res) => {
@@ -232,7 +227,7 @@ router.post('/register/send-email-confirmation', //done ANCHOR
 // will return bufferid pe care o sa se incarce foto buletin / proofofresidence
 // frontend will access this after email confirmation ANCHOR
 router.post('/register/prepare-media-upload', 
-    body('session_id').not().isEmpty().isAlphanumeric().isLength(64),
+    check('session_id').not().isEmpty().isAlphanumeric().isLength(64),
     expressValidation,
     userpreSessionProcessing,
     async (req, res) => {
@@ -251,21 +246,21 @@ router.post('/register/prepare-media-upload',
     do {
         found = true;
         newBufferString = generateString(64);
-        if( await client.EXISTS(redisPathString+newBufferString )) {
+        if( await client.exists(redisPathString+newBufferString )) {
             found = false;
         }
     } while(!found)
     redisPathString = redisPathString+newBufferString
-    await client.set(redisPathString, true, { EX: (12 * 60 * 60) })
-    await client.set(redisPathString+':scope', 'proofOfResidenceUpload', { EX: (12 * 60 * 60) })
+    await client.set(redisPathString, true, 'EX', (12 * 60 * 60))
+    await client.set(redisPathString+':scope', 'proofOfResidenceUpload', 'EX', (12 * 60 * 60))
 /*     await client.set(redisPathString+':count', '1') */
 
 
     return res.status(200).send(newBufferString)
 })
 router.post('/register/media-upload', //done ANCHOR
-    body('buffer_id').notEmpty().isAlphanumeric().isLength(64),
-    body('session_id').notEmpty().isAlphanumeric().isLength(64),
+    check('buffer_id').notEmpty().isAlphanumeric().isLength(64),
+    check('session_id').notEmpty().isAlphanumeric().isLength(64),
     expressValidation,
     upload.single('image'),
     userpreSessionProcessing,
@@ -280,7 +275,7 @@ router.post('/register/media-upload', //done ANCHOR
     })
     if(!user) return res.sendStatus(500);
     {
-        let tryBuffer = await client.EXISTS('userpre:'
+        let tryBuffer = await client.exists('userpre:'
             +user._id+':mediabuffers:'+req.body.buffer_id);
         if(!tryBuffer) {
             return res.sendStatus(403)
@@ -306,7 +301,7 @@ router.post('/register/media-upload', //done ANCHOR
     return res.sendStatus(200);
 })
 router.get('/register/reviewable',  // ANCHOR
-    body('session_id').not().isEmpty().isAlphanumeric().isLength(64),
+    check('session_id').not().isEmpty().isAlphanumeric().isLength(64),
     expressValidation,
     userpreSessionProcessing,
     async (req, res) => {

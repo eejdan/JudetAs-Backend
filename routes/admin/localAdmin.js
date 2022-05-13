@@ -1,6 +1,6 @@
 
 const express = require('express');
-const { body } = require('express-validator');
+const { check } = require('express-validator');
 const expressValidation = require('../../middleware/expressValidation');
 
 const AdminRole = require('../../models/AdminRole')
@@ -24,10 +24,10 @@ router.get('/upid', (req, res) => {
     res.sendStatus(502)
 })
 router.get('/dynamicqueries', //ANCHOR
-    body("unsolved_sid").not().isEmpty().isAlphanumeric().isLength(64),
-    body("currentAccessToken").not().isEmpty().isAlphanumeric().isLength(64),
-    body("query_type").isString({ max: 32 }),
-    body("query_handle").isString(),
+    check("unsolved_sid").not().isEmpty().isAlphanumeric().isLength(64),
+    check("currentAccessToken").not().isEmpty().isAlphanumeric().isLength(64),
+    check("query_type").isString({ max: 32 }),
+    check("query_handle").isString(),
     expressValidation,
     adminTokenProcessing,
     async (req, res) => {
@@ -36,9 +36,9 @@ router.get('/dynamicqueries', //ANCHOR
 
 
 router.get('/requestlist', //done ANCHOR
-    body("unsolved_sid").not().isEmpty().isAlphanumeric().isLength(64),
-    body("currentAccessToken").not().isEmpty().isAlphanumeric().isLength(64),
-    body("query_handle").not().isEmpty().isAlphanumeric(),
+    check("unsolved_sid").not().isEmpty().isAlphanumeric().isLength(64),
+    check("currentAccessToken").not().isEmpty().isAlphanumeric().isLength(64),
+    check("query_handle").not().isEmpty().isAlphanumeric(),
     expressValidation,
     adminTokenProcessing, 
     async (req, res) => {
@@ -63,7 +63,7 @@ router.get('/requestlist', //done ANCHOR
         claimedMeta: {
             firstName: 1,
             lastName: 1,
-            localInstance: 0
+            localInstance: 1
         },
         proofOfResidence: 1
     }).lean().exec();
@@ -72,10 +72,10 @@ router.get('/requestlist', //done ANCHOR
     });
 }) //left here
 router.get('/proofOfResidence', //ANCHOR
-    body("unsolved_sid").not().isEmpty().isAlphanumeric().isLength(64),
-    body("currentAccessToken").not().isEmpty().isAlphanumeric().isLength(64),
-    body("query_handle").not().isEmpty().isAlphanumeric(), //registerRequest id
-    body("query_localInstance").notEmpty().isAlphanumeric(), // id 
+    check("unsolved_sid").not().isEmpty().isAlphanumeric().isLength(64),
+    check("currentAccessToken").not().isEmpty().isAlphanumeric().isLength(64),
+    check("query_handle").not().isEmpty().isAlphanumeric(), //registerRequest id
+    check("query_localInstance").notEmpty().isAlphanumeric(), // id 
     expressValidation,
     adminTokenProcessing, 
     async (req, res) => {
@@ -108,10 +108,10 @@ router.get('/proofOfResidence', //ANCHOR
 
 
 router.get('/userpreinfo', //ANCHOR
-    body("unsolved_sid").not().isEmpty().isAlphanumeric().isLength(64),
-    body("currentAccessToken").not().isEmpty().isAlphanumeric().isLength(64),
-    body("query_handle").isString({ max: 48 }), //registerRequest id
-    body("query_localInstance").notEmpty().isAlphanumeric(), // id 
+    check("unsolved_sid").not().isEmpty().isAlphanumeric().isLength(64),
+    check("currentAccessToken").not().isEmpty().isAlphanumeric().isLength(64),
+    check("query_handle").isString({ max: 48 }), //registerRequest id
+    check("query_localInstance").notEmpty().isAlphanumeric(), // id 
     expressValidation,
     adminTokenProcessing,
     async (req, res) => {
@@ -134,7 +134,7 @@ router.get('/userpreinfo', //ANCHOR
         claimedMeta: {
             firstName: 1,
             lastName: 1,
-            localInstance: 0
+            localInstance: 1
         },
         proofOfResidence: 1,
         changesNecesary: {
@@ -149,10 +149,10 @@ router.get('/userpreinfo', //ANCHOR
 })
 
 router.get('/userinfo', //ANCHOR
-    body("unsolved_sid").not().isEmpty().isAlphanumeric().isLength(64),
-    body("currentAccessToken").not().isEmpty().isAlphanumeric().isLength(64),
-    body("query_handle").isString({ max: 48 }), //id
-    body("query_localInstance").notEmpty().isAlphanumeric(), // id 
+    check("unsolved_sid").not().isEmpty().isAlphanumeric().isLength(64),
+    check("currentAccessToken").not().isEmpty().isAlphanumeric().isLength(64),
+    check("query_handle").isString({ max: 48 }), //id
+    check("query_localInstance").notEmpty().isAlphanumeric(), // id 
     expressValidation,
     adminTokenProcessing,
     async (req, res) => {
@@ -180,9 +180,9 @@ router.get('/userinfo', //ANCHOR
 })
 
 router.post('/createmod',//ANCHOR
-    body("unsolved_sid").not().isEmpty().isAlphanumeric().isLength(64),
-    body("currentAccessToken").not().isEmpty().isAlphanumeric().isLength(64),
-    body("query_user_handle").isString({ max: 48 }), //username
+    check("unsolved_sid").not().isEmpty().isAlphanumeric().isLength(64),
+    check("currentAccessToken").not().isEmpty().isAlphanumeric().isLength(64),
+    check("query_user_handle").isString({ max: 48 }), //username
     expressValidation,
     adminTokenProcessing,
     async (req, res) => {
@@ -190,9 +190,9 @@ router.post('/createmod',//ANCHOR
 })
 
 router.get('/articlelist', //ANCHOR
-    body("unsolved_sid").not().isEmpty().isAlphanumeric().isLength(64),
-    body("currentAccessToken").not().isEmpty().isAlphanumeric().isLength(64),
-    body("query_localInstance").isString({ max: 72 }), // displayName
+    check("unsolved_sid").not().isEmpty().isAlphanumeric().isLength(64),
+    check("currentAccessToken").not().isEmpty().isAlphanumeric().isLength(64),
+    check("query_localInstance").isString({ max: 72 }), // displayName
     expressValidation,
     adminTokenProcessing,
     async (req, res) => {

@@ -2,7 +2,7 @@
 const fs = require('fs').promises;
 
 const express = require('express');
-const { body } = require('express-validator');
+const { check } = require('express-validator');
 const expressValidation = require('../middleware/expressValidation');
 
 const userTokenProcessing = require('../middleware/userTokenProcessing');
@@ -26,9 +26,9 @@ router.get('/', (req, res) => {
 //tbd
 // will only be a follow up of other requests
 router.post('/media-upload', (req, res) => {
-    body('session_id').not().isEmpty().isAlphanumeric().isLength(64),
-    body('currentAccessToken').not().isEmpty().isAlphanumeric().isLength(64),
-    body('buffer_id').not().isEmpty().isAlphanumeric().isLength(64)
+    check('session_id').not().isEmpty().isAlphanumeric().isLength(64),
+    check('currentAccessToken').not().isEmpty().isAlphanumeric().isLength(64),
+    check('buffer_id').not().isEmpty().isAlphanumeric().isLength(64)
     expressValidation,
     userTokenProcessing,
     async (req, res) => {
@@ -39,12 +39,12 @@ router.post('/media-upload', (req, res) => {
 
 
 router.post('/posts/create',
-    body('session_id').not().isEmpty().isAlphanumeric().isLength(64),
-    body('currentAccessToken').not().isEmpty().isAlphanumeric().isLength(64),
-    body('query_localInstance').not().isEmpty().isString({ max: 64 }),
-    body('query_article_problem').not().isEmpty().isString().isLength({ max: 1200 }),
-    body('query_article_solution').isString().isLength({ max: 700 }),
-    body('query_article_mediaCount').isNumeric(),
+    check('session_id').not().isEmpty().isAlphanumeric().isLength(64),
+    check('currentAccessToken').not().isEmpty().isAlphanumeric().isLength(64),
+    check('query_localInstance').not().isEmpty().isString({ max: 64 }),
+    check('query_article_problem').not().isEmpty().isString().isLength({ max: 1200 }),
+    check('query_article_solution').isString().isLength({ max: 700 }),
+    check('query_article_mediaCount').isNumeric(),
     expressValidation,
     userTokenProcessing,
     async (req, res) => {
@@ -80,11 +80,11 @@ router.post('/posts/create',
 
 });
 router.post('/posts/reaction', 
-    body('session_id').not().isEmpty().isAlphanumeric().isLength(64),
-    body('currentAccessToken').not().isEmpty().isAlphanumeric().isLength(64),
-    body('query_parent').not().isEmpty().isAlphanumeric(),
-    body('query_reaction_type').not().isEmpty().isAlphanumeric(),
-    body('query_reaction_score').not().isEmpty().isNumeric({ no_symbols: true }).isLength({ max: 3 }),
+    check('session_id').not().isEmpty().isAlphanumeric().isLength(64),
+    check('currentAccessToken').not().isEmpty().isAlphanumeric().isLength(64),
+    check('query_parent').not().isEmpty().isAlphanumeric(),
+    check('query_reaction_type').not().isEmpty().isAlphanumeric(),
+    check('query_reaction_score').not().isEmpty().isNumeric({ no_symbols: true }).isLength({ max: 3 }),
     async (req, res) => {
     if(!res.locals.userid) {
         res.sendStatus(500);
@@ -136,10 +136,10 @@ router.post('/posts/reaction',
 
 
 router.post('/comments/create',    
-    body('session_id').not().isEmpty().isAlphanumeric().isLength(64),
-    body('currentAccessToken').not().isEmpty().isAlphanumeric().isLength(64),
-    body('query_parent').not().isEmpty().isAlphanumeric(),
-    body('query_comment').not().isEmpty().isAlphanumeric().isLength({ max: 450 }),
+    check('session_id').not().isEmpty().isAlphanumeric().isLength(64),
+    check('currentAccessToken').not().isEmpty().isAlphanumeric().isLength(64),
+    check('query_parent').not().isEmpty().isAlphanumeric(),
+    check('query_comment').not().isEmpty().isAlphanumeric().isLength({ max: 450 }),
     expressValidation,
     userTokenProcessing,
     async (req, res) => {
@@ -178,10 +178,10 @@ router.post('/comments/create',
 })
 
 router.post('/comments/create-reply',
-    body('session_id').not().isEmpty().isAlphanumeric().isLength(64),
-    body('currentAccessToken').not().isEmpty().isAlphanumeric().isLength(64),
-    body('query_parent_comment').not().isEmpty().isAlphanumeric(),
-    body('query_comment').not().isEmpty().isAlphanumeric().isLength({ max: 450 }),
+    check('session_id').not().isEmpty().isAlphanumeric().isLength(64),
+    check('currentAccessToken').not().isEmpty().isAlphanumeric().isLength(64),
+    check('query_parent_comment').not().isEmpty().isAlphanumeric(),
+    check('query_comment').not().isEmpty().isAlphanumeric().isLength({ max: 450 }),
     expressValidation,
     userTokenProcessing,
     async (req, res) => {

@@ -5,10 +5,7 @@ const express = require("express");
 const helmet = require("helmet");
 const cookieParser = require("cookie-parser")
 
-const { join } = require('path')
-
 const mongoose = require("mongoose");
-const crypto = require("crypto")
 
 main().catch(err => console.log(err));
 
@@ -33,9 +30,18 @@ const userpre = require("./routes/userpre")
 app.use(helmet());
 app.use(cookieParser());
 app.use(express.json());
-app.use(express.static(join(__dirname, 'static')));
+
 app.use((req, res, next) =>{
-    console.log(req.path)
+    req.body = {
+        ...req.body,
+        ...req.params
+    }
+    console.log(req.params);
+    console.log(req.body);
+    console.log('path: '+req.path)
+    res.set("Access-Control-Allow-Origin", "*");
+    res.set("Access-Control-Allow-Headers", "*");
+    res.set("Access-Control-Expose-Headers", "*"); //tbd allowed origins TODO
     next();
 })
 app.use('/api/auth', auth);

@@ -2,12 +2,8 @@
 
 const crypto = require("crypto");
 
-const redis = require("redis")
-const client = redis.createClient({ 
-    username: process.env.BACKEND_REDIS_USERNAME, 
-    password: process.env.BACKEND_REDIS_PASSWORD,
-    url: process.env.BACKEND_REDIS_URL,
-});
+
+const client = require('../redisconnection');
 
 const mongoose = require('mongoose')
 
@@ -17,11 +13,9 @@ const generateString = require('../util/generateString');
 const adminTokenProcessing = async (req, res, next) => {
     let redisPathString = 'admin:sessions:'+req.body.unsolved_sid;
     { //Verifica daca exista sesiunea
-        let trySession = await client.EXISTS(redisPathString)
+        let trySession = await client.exists(redisPathString)
         if(!trySession) {
-            return res.status(401).send({
-                authFail: 'session'
-            });
+            return res.sendStatus(410);
         }
     }
     {
@@ -32,39 +26,32 @@ const adminTokenProcessing = async (req, res, next) => {
         res.locals.userid = uid; // important
     }
     { //Verifica daca exista tokenul de access si daca este cel curent
-        let tryToken = await client.EXISTS(redisPathString+':tokens:'+req.body.currentAccessToken)
+        let tryToken = await client.exists(redisPathString+':tokens:'+req.body.currentAccessToken)
         if(!tryToken) {
-            //to remove authFail se trimite numai codul http
-            return res.status(401).send({
-                authFail: 'token' // numai pentru debugging
-            });
+            return res.sendStatus(410);
         }
-        let tryLast = await client.get(redisPathString+':tokens:'+last);
+        let tryLast = await client.get(redisPathString+':tokens:last');
         if(tryLast != req.body.currentAccessToken) {
             client.set(redisPathString+':error', 'backtrackedToken');
-            client.DEL(redisPathString)
-            return res.status(401).send({
-                authFail: 'current-token'
-            })
+            client.del(redisPathString)
+            return res.sendStatus(401);
 
         }
     }
     { /*Verifica daca sesiune e autorizata 
         (administratorii vor trebuie sa reintroduca un pin 
         la fiecare jumatate de ora ca sa autorizeze sesiunea) */
-        let tryAuthorized = await client.EXISTS(redisPathString+':authorized');
+        let tryAuthorized = await client.exists(redisPathString+':authorized');
         //cheia :last-authorized expira (se sterge singura) dupa 30 de minute de la autorizare
         if(!tryAuthorized) {
-            return res.status(410).send({
-                authFail: 'session-authorization'
-            });
+            return res.sendStatus(401);
         }
     }
     let newTokenString;
     do {
         found = true;
         newTokenString = generateString(64);
-        let tryStringQuery = await client.EXISTS(
+        let tryStringQuery = await client.exists(
             redisPathString + ':tokens:' + newTokenString
         )
         if(tryStringQuery) {
@@ -75,7 +62,7 @@ const adminTokenProcessing = async (req, res, next) => {
     await client.set(redisPathString+':tokens:'+newTokenString, true);
     await client.set(redisPathString+":tokens:last", newTokenString);
     await client.set(redisPathString+":tokens:last-date", Date.now());
-    await client.set(redisPathString+':authorized', true, { EX: (30 * 60)});
+    await client.set(redisPathString+':authorized', true,  'EX', (30 * 60));
     res.locals.currentAccessToken = newTokenString;
     res.append('newAccessToken', newTokenString)
     next();

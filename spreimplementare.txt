@@ -4,14 +4,12 @@
 
 server will store information in redis 
 
-cotainer.buffers = {
+container.buffers = {
     {bufferitem-title}: {bufferid} 
 }
 
 admin:{userid}:securitybuffers:{bufferid}:information EX 60 * 15 (15 minutes)
 64 chars
-
-##003 code split > router pentru /admin/administrator-general
 
 ##004 replace 401 with 403 where logical
 
@@ -19,3 +17,5 @@ admin:{userid}:securitybuffers:{bufferid}:information EX 60 * 15 (15 minutes)
 403 forbidden 
 
 ##005 add .lean() wherever possible
+
+##006 in >admin.js

@@ -216,7 +216,9 @@ router.post('/user/login',
         await client.set(redisPathString, true, 'EX', (10 * 24 * 60 * 60));
         await client.set(redisPathString+':userid', res.locals.user._id);
         res.cookie('unsolved_sid', newSessionString, { sameSite: 'strict' })
-
+        return res.status(200).send({
+            session_id: newSessionString,
+        })
     }
 })
 

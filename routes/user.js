@@ -7,6 +7,8 @@ const expressValidation = require('../middleware/expressValidation');
 
 const userTokenProcessing = require('../middleware/userTokenProcessing');
 
+const mongoose = require('mongoose')
+
 const LocalInstance = require('../models/LocalInstance');
 const UserRole = require('../models/AdminRole');
 const UserArticle = require('../models/UserArticle');
@@ -14,6 +16,7 @@ const UserComment = require('../models/UserComment');
 const UserReaction = require('../models/UserReaction');
 
 const multer = require('multer');
+const res = require('express/lib/response');
 var storage = multer.memoryStorage();
 var upload = multer({ storage: storage, limits: { fileSize: 1000000 /* 1mb */} })
 
@@ -22,6 +25,187 @@ const router = express.Router();
 router.get('/', (req, res) => {
     res.send("Yeehaw");
 })
+
+router.post('/getFeed', 
+    check('session_id').not().isEmpty().isAlphanumeric().isLength(64),
+    check('currentAccessToken').not().isEmpty().isAlphanumeric().isLength(64),
+    check('query_filter'),
+    expressValidation,
+    userTokenProcessing,
+    async (req, res) => {
+    if(!res.locals.userid) return res.sendStatus(500);
+    if(!req.body.query_filter) return res.sendStatus(400);
+    var articles = [];
+    const noRoles = () => {
+        return res.status(200).send({
+            roles: false
+        })
+    } //tbd no articles TODO
+    var filterResolvers = {
+    'new': async () => {
+        if(!req.body.query_instance || req.body.query_instance == 'all') {
+            let userRoles = await UserRole.find({
+                user: res.locals.userid,
+            }).exec();
+            if(!roles) return noRoles();
+            let locals = [];
+            let localsId = [];
+            for(let i in userRoles) {
+                let ur = userRoles[i];
+                let li = await LocalInstance.findById(ur.localInstance)
+                .select("displayName").exec();
+                let localslen = locals.length
+                locals[length] = {
+                    id: ur.localInstance,
+                    displayName: li.displayName
+                }
+                localsId.push(ur.localInstance);
+            }
+            let arts = await UserArticle.find({
+                localInstance: localsId,
+                progress: {
+                    $gte: 0
+                },
+            }).select("user localInstance progress problemText articleMedia solutionText").sort({ _id: -1 }).exec();
+            for(let i in arts) {
+                let container = {};
+                let article = arts[i];
+                container.user = article.user;
+                container.progress= article.progress;
+                container.problemText = article.problemText;
+                container.articleMedia = article.articleMedia;
+                container.solutionText = article.solutionText;
+            }
+            articles.push(container)
+        } else {
+            let userRoles = await UserRole.find({
+                localInstance: req.body.query_instance,
+                user: res.locals.userid,
+            }).exec();
+            if(!userRoles) return res.sendStatus(403);
+            let arts = await UserArticle.find({
+                localInstance: req.body.query_instance,
+                progress: {
+                    $gte: 0
+                },
+            }).select("user localInstance progress problemText articleMedia solutionText").sort({ _id: -1 }).exec();
+            for(let i in arts) {
+                let container = {};
+                let article = arts[i];
+                container.user = article.user;
+                container.progress= article.progress;
+                container.problemText = article.problemText;
+                container.articleMedia = article.articleMedia;
+                container.solutionText = article.solutionText;
+            }
+            articles.push(container)
+        }
+        return res.status(200).send({
+            roles: true,
+            posts: articles
+        })
+    },
+    'popular': async () => {
+        if(!req.body.query_instance || req.body.query_instance == 'all') {
+            let userRoles = await UserRole.find({
+                user: res.locals.userid,
+            }).exec();
+            if(!roles) return noRoles();
+            let locals = [];
+            let localsId = [];
+            for(let i in userRoles) {
+                let ur = userRoles[i];
+                let li = await LocalInstance.findById(ur.localInstance)
+                .select("displayName").exec();
+                let localslen = locals.length
+                locals[length] = {
+                    id: ur.localInstance,
+                    displayName: li.displayName
+                }
+                localsId.push(ur.localInstance);
+            }
+            let arts = await UserArticle.aggregate([{
+                $match: { 
+                    localInstance: localsId,
+                    progress: {
+                        $gte: 0
+                    } 
+                }
+            },
+            {
+                $lookup: {
+                    from: 'userReactions',
+                    localField: '_id',
+                    foreignField: 'parent',
+                    as: "scores"
+                }
+            },
+            {
+                $unwind: '$scores'
+            },
+            {
+                $group: {
+                    _id: "$_id",
+                    "scoreTracker": {
+                        $sum: "$scores.rating"
+                    }
+                }
+            }, {
+                $sort: {
+                    scoreTracker: -1
+                }
+            }, {
+                $limit: 10
+            }]).exec();
+            // left here get articles by id from agregation
+            for(let i in arts) {
+
+                let container = {};
+                let article = UserArticle.findById(arts[i]._id).exec();
+                container.user = article.user;
+                container.progress= article.progress;
+                container.problemText = article.problemText;
+                container.articleMedia = article.articleMedia;
+                container.solutionText = article.solutionText;
+                container.score = arts[i].scoreTracker;
+            }
+            articles.push(container)
+        } else {
+
+        }
+        return res.status(200).send({
+            roles: true,
+            posts: articles
+        })
+    }
+    };
+    if(!filterResolvers[req.body.query]) return res.sendStatus(400);
+    filterResolvers[req.body.query]();   
+
+})
+router.post('/continueFeed', 
+    check('session_id').not().isEmpty().isAlphanumeric().isLength(64),
+    check('currentAccessToken').not().isEmpty().isAlphanumeric().isLength(64),
+    check('query_filter'),
+//not checking but must be included    check('query_instance'),
+    check('query_lastId'),
+    expressValidation,
+    userTokenProcessing,
+    (req, res) => {
+
+})
+
+router.post('/posts/get', 
+    check('session_id').not().isEmpty().isAlphanumeric().isLength(64),
+    check('currentAccessToken').not().isEmpty().isAlphanumeric().isLength(64),
+    expressValidation,
+    userTokenProcessing,
+    (req, res) => {
+
+    }
+
+)
+
 
 //tbd
 // will only be a follow up of other requests
@@ -69,6 +253,7 @@ router.post('/posts/create',
         }
     }// add profanity filter
     let article = new UserArticle({
+        creationDate: Date.now(),
         user: res.locals.userid,
         localInstance: instanceId,
         progress: 1,

@@ -19,7 +19,7 @@ node_modules/
 
 *.tgz
 
-.env
+
 .env.test
 .security
 

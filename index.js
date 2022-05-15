@@ -32,13 +32,13 @@ app.use(cookieParser());
 app.use(express.json());
 
 app.use((req, res, next) =>{
+    console.log('\n ------- NEW')
     req.body = {
         ...req.body,
         ...req.params
     }
-    console.log(req.params);
+    console.log(req.method + ' ' + req.path);
     console.log(req.body);
-    console.log('path: '+req.path)
     res.set("Access-Control-Allow-Origin", "*");
     res.set("Access-Control-Allow-Headers", "*");
     res.set("Access-Control-Expose-Headers", "*"); //tbd allowed origins TODO

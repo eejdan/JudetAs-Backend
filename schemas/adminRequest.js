@@ -19,4 +19,4 @@ const adminRequestSchema = new mongoose.Schema({
     collection: 'adminRequests'
 })
 
-module.exports = adminRequestScehma
+module.exports = adminRequestSchema

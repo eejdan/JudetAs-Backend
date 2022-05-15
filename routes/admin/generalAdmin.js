@@ -2,16 +2,17 @@ if (require.main === module) {
     require('dotenv').config();
 }
 const { check } = require("express-validator");
-const expressValidation = require('../middleware/expressValidation');
+const expressValidation = require('../../middleware/expressValidation');
 
 const express = require("express");
 
-const User = require('../models/User');
-const AdminRole = require('../models/AdminRole');
-const GeneralAdminRole = require('../models/GeneralAdminRole');
-const LocalInstance = require('../models/LocalInstance');
+const User = require('../../models/User');
+const AdminRequest = require('../../models/AdminRequest')
+const AdminRole = require('../../models/AdminRole');
+const GeneralAdminRole = require('../../models/GeneralAdminRole');
+const LocalInstance = require('../../models/LocalInstance');
 
-const adminTokenProcessing = require('../middleware/adminTokenProcessing');
+const adminTokenProcessing = require('../../middleware/adminTokenProcessing');
 
 const router = express.Router();
 
@@ -104,6 +105,8 @@ router.get("/single",
 
 })
 
+//tbd /add general role TODO
+
 //atribuie un rol de adminstrare unui user
 router.post("/addrole",
     check("unsolved_sid").not().isEmpty().isAlphanumeric().isLength(64),
@@ -168,5 +171,58 @@ router.get("/request-list",
     }))
     return res.status(200).send({ requests: requests });
 })
+// returns user id not user data
+router.post('/request',
+    check("unsolved_sid").not().isEmpty().isAlphanumeric().isLength(64),
+    check("currentAccessToken").not().isEmpty().isAlphanumeric().isLength(64),
+    check("query_handle").not().isEmpty().isString({ max: 48 }), //req id
+    expressValidation,
+    adminTokenProcessing, 
+    GACheck,
+    async (req, res) => { 
+    var adminRequest = await AdminRequest.findById(req.body['query_handle']).exec();
+    if(!adminRequest) res.sendStatus(404);
+    let request = {
+        creationDate: adminRequest.creationDate,
+        reviewStatus: adminRequest.reviewStatus,
+        user: adminRequest._id
+    }
+    return res.status(200).send({ request: request });
+});
 
+
+router.post('/createinstance', 
+    check("unsolved_sid").not().isEmpty().isAlphanumeric().isLength(64),
+    check("currentAccessToken").not().isEmpty().isAlphanumeric().isLength(64),
+    check("query_displayName").not().isEmpty().isString({ max: 64}), //localinstance displayName
+    check("query_parentid").isString({ max: 64 }), //parent instance id
+    expressValidation,
+    adminTokenProcessing, 
+    GACheck,
+    async (req, res) => {
+    {
+        let tryInstanceProjection = {
+            displayName: req.body['query_displayName']
+        }
+        if(req.body['query_parentid'] && typeof req.body['query_parentid'] == 'string'){
+            if(req.body['query_parentid'].length > 1) {
+                tryInstanceProjection.parentInstance = req.body['query_parentid'];
+        }}
+        let tryInstance = await LocalInstance.findOne(tryInstanceProjection).exec();
+        if(tryInstance) { return res.sendStatus(208); }
+    }
+
+    var localInstance = new LocalInstance({
+        displayName: req.body['query_displayName'], 
+    })
+    if(req.body['query_parentid'] && typeof req.body['query_parentid'] == 'string'){
+        if(req.body['query_parentid'].length > 1) {
+            let parentInstance = await LocalInstance.findById(req.body['query_parentid']).select({ rank: 1 }).exec();
+            if(!parentInstance)
+                return res.sendStatus(404);
+            localInstance.parentInstance = req.body['query_parentid'];
+            localInstance.rank = parentInstance.rank;
+    }}
+    return res.sendStatus(201);
+})
 module.exports = router;

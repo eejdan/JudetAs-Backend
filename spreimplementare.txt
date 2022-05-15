@@ -16,6 +16,10 @@ admin:{userid}:securitybuffers:{bufferid}:information EX 60 * 15 (15 minutes)
 401 unathorized (because authentication error)
 403 forbidden 
 
-##005 add .lean() wherever possible
+##005 add  wherever possible
 
 ##006 in >admin.js
+
+##007 id fail -> displayNames fallback
+
+##008 Check and correct wrong validator string lengths

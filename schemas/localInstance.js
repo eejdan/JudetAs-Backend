@@ -5,7 +5,6 @@ var localInstanceSchema = new mongoose.Schema({
     displayName: { // max 64 char
         type: String, 
         required: true,
-        unique: true
     },
     parentInstance: {
         type: mongoose.SchemaTypes.ObjectId,
@@ -25,7 +24,7 @@ var localInstanceSchema = new mongoose.Schema({
         },
         localNumber: {
             type: Number,
-            unique: true,
+            unique: false,
             required: false,
             default: null
         }

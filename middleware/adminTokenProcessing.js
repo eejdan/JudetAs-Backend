@@ -15,6 +15,7 @@ const adminTokenProcessing = async (req, res, next) => {
     { //Verifica daca exista sesiunea
         let trySession = await client.exists(redisPathString)
         if(!trySession) {
+            console.log('410 ATP session not found in redis'); //debug
             return res.sendStatus(410);
         }
     }
@@ -28,14 +29,15 @@ const adminTokenProcessing = async (req, res, next) => {
     { //Verifica daca exista tokenul de access si daca este cel curent
         let tryToken = await client.exists(redisPathString+':tokens:'+req.body.currentAccessToken)
         if(!tryToken) {
+            console.log('410 ATP token not found'); //debug
             return res.sendStatus(410);
         }
         let tryLast = await client.get(redisPathString+':tokens:last');
         if(tryLast != req.body.currentAccessToken) {
             client.set(redisPathString+':error', 'backtrackedToken');
             client.del(redisPathString)
+            console.log('401 ATP token not last') //debug
             return res.sendStatus(401);
-
         }
     }
     { /*Verifica daca sesiune e autorizata 
@@ -44,6 +46,7 @@ const adminTokenProcessing = async (req, res, next) => {
         let tryAuthorized = await client.exists(redisPathString+':authorized');
         //cheia :last-authorized expira (se sterge singura) dupa 30 de minute de la autorizare
         if(!tryAuthorized) {
+            console.log('401 ATP session not authorized') //debug
             return res.sendStatus(401);
         }
     }
@@ -58,13 +61,14 @@ const adminTokenProcessing = async (req, res, next) => {
             found = false;
         }
     } while(!found)
+    console.log('ATP newaccesstoken', newTokenString);
     // sa incerc fara await la urmatoarele queryuri
     await client.set(redisPathString+':tokens:'+newTokenString, true);
     await client.set(redisPathString+":tokens:last", newTokenString);
     await client.set(redisPathString+":tokens:last-date", Date.now());
     await client.set(redisPathString+':authorized', true,  'EX', (30 * 60));
     res.locals.currentAccessToken = newTokenString;
-    res.append('newAccessToken', newTokenString)
+    res.append('newaccesstoken', newTokenString);
     next();
 }
 

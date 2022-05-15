@@ -57,7 +57,7 @@ router.post('/posts/create',
             displayName: req.body.query_localInstance
         });
         if(!localInstance) {
-            return res.sendStatus(400); // 401 pentru mai multa securitate? prin ambiguitate
+            return res.sendStatus(400);
         }
         instanceId = localInstance._id;
         let urole = await UserRole.findOne({

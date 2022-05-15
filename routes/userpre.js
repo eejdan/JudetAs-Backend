@@ -43,7 +43,7 @@ router.post('/register/address-dynamicqueries',
         $text: { $search: req.body.query_handle }
     }).select({
         displayName: 1, _id: 1, rank: 1, parentInstance: 1
-    }).lean().exec();
+    }).exec();
     if(!localInstances)
         return res.sendStatus(404)
     var instanceMap = await Promise.all(localInstances.map(async instance => {
@@ -54,7 +54,7 @@ router.post('/register/address-dynamicqueries',
             let pressRank = parseInt(instance.rank);
             while(currentRank > 0) {
                 let li = await LocalInstance.findById(instance.parentInstance)
-                    .select({ _id: 1, displayName: 1, rank: 1}).lean().exec();
+                    .select({ _id: 1, displayName: 1, rank: 1}).exec();
                 currentRank = li.rank;
                 container.parents[container.parents.length] = li.displayName;
                 pressRank--;

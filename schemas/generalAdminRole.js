@@ -10,6 +10,9 @@ const generalAdminRoleSchema = new mongoose.Schema({
         type: mongoose.SchemaTypes.ObjectId,
         required: true,
         unique: true
+    },
+    username: {
+        next: String
     }
 }, {
     collection: 'generalAdminRoles'

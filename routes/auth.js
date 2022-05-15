@@ -63,7 +63,7 @@ router.post('/admin/login', //returneaza response cu o sesiune (neautorizata inc
         await client.set(redisPathString+':userid', res.locals.user._id);
         await client.set(redisPathString+":hitlist", 0);
 
-        res.cookie('unsolved_sid', newSessionString)
+        res.cookie('unsolved_sid', newSessionString, { sameSite: 'strict' })
 
         return res.status(200).send({
             session_id: newSessionString,
@@ -97,7 +97,7 @@ router.post('/admin/authorize', //ia sesiunea si sesiunea codificata cu pinul re
     //Gaseste userul sesiunii
     var user = await User.findById(await client.get(redisPathString+':userid')).exec();
     if(!user) {
-        return res.sendStatus(400);
+        return res.sendStatus(500);
     }
     {
         let tryAdminRole = await AdminRole.findOne({

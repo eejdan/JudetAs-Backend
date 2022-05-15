@@ -6,7 +6,7 @@ const expressValidation = require('../../middleware/expressValidation');
 const AdminRole = require('../../models/AdminRole')
 const UserRegisterRequest = require('../../models/UserRegisterRequest')
 const UserImage = require('../../models/UserImage');
-
+const LocalInstance = require('../../models/LocalInstance');
 
 const adminTokenProcessing = require('../../middleware/adminTokenProcessing');
 const User = require('../../models/User');
@@ -23,15 +23,36 @@ router.get('/uid', (req, res) => {
 router.get('/upid', (req, res) => {
     res.sendStatus(502)
 })
+
+router.post('/instance', 
+    check("unsolved_sid").not().isEmpty().isAlphanumeric().isLength(64),
+    check("currentAccessToken").not().isEmpty().isAlphanumeric().isLength(64),
+    expressValidation,
+    adminTokenProcessing,
+    async (req, res) => { res.sendStatus(502); }) //tbd get info for instance popup; TODO
+
+
 router.get('/dynamicqueries', //ANCHOR
     check("unsolved_sid").not().isEmpty().isAlphanumeric().isLength(64),
     check("currentAccessToken").not().isEmpty().isAlphanumeric().isLength(64),
-    check("query_type").isString({ max: 32 }),
     check("query_handle").isString(),
     expressValidation,
     adminTokenProcessing,
     async (req, res) => {
-
+    if(!res.locals.userid) {
+        return res.sendStatus(500);
+    }
+    {
+        let adminRole = await AdminRole.exists({
+            localInstance: req.body.query_handle,
+            user: res.locals.userid
+        }).exec();
+        if(!adminRole) { 
+            return res.sendStatus(403);
+        }
+    }
+    var localInstance = await LocalInstance.findById(req.body.query_handle).exec();
+    
 })
 
 
@@ -66,7 +87,7 @@ router.get('/requestlist', //done ANCHOR
             localInstance: 1
         },
         proofOfResidence: 1
-    }).lean().exec();
+    }).exec();
     return res.status(200).send({
         requests: userRegisterRequests
     });
@@ -130,7 +151,8 @@ router.get('/userpreinfo', //ANCHOR
         creationDate: 1,
         username: 1,
         email: 1,
-        password: 0,
+        password: 1,
+        pin: 1,
         claimedMeta: {
             firstName: 1,
             lastName: 1,
@@ -141,7 +163,9 @@ router.get('/userpreinfo', //ANCHOR
             text: 1,
             object: 1
         }
-    }).lean().exec();
+    }).exec();
+    regReq.password = '';
+    regReq.pin = '';
     if(!regReq) return res.sendStatus(404);
     return res.status(200).send({
         info: regReq
@@ -164,7 +188,7 @@ router.get('/userinfo', //ANCHOR
         }).exec();
         if(!adminRole) return res.sendStatus(403);
     }
-    let user = await User.findById(req.body.query_handle).select("-password -pin").lean().exec();
+    let user = await User.findById(req.body.query_handle).select("-password -pin").exec();
     if(!user) return res.sendStatus(404);
     let container = {
         username: user.username,

@@ -5,7 +5,7 @@ const express = require('express');
 const { check } = require('express-validator');
 const expressValidation = require('../middleware/expressValidation');
 
-const userTokenProcessing = require('../middleware/userTokenProcessing');
+const userSessionProcessing = require('../middleware/userSessionProcessing');
 
 const mongoose = require('mongoose')
 
@@ -28,10 +28,9 @@ router.get('/', (req, res) => {
 
 router.post('/getFeed', 
     check('session_id').not().isEmpty().isAlphanumeric().isLength(64),
-    check('currentAccessToken').not().isEmpty().isAlphanumeric().isLength(64),
     check('query_filter'),
     expressValidation,
-    userTokenProcessing,
+    userSessionProcessing,
     async (req, res) => {
     if(!res.locals.userid) return res.sendStatus(500);
     if(!req.body.query_filter) return res.sendStatus(400);
@@ -185,21 +184,19 @@ router.post('/getFeed',
 })
 router.post('/continueFeed', 
     check('session_id').not().isEmpty().isAlphanumeric().isLength(64),
-    check('currentAccessToken').not().isEmpty().isAlphanumeric().isLength(64),
     check('query_filter'),
 //not checking but must be included    check('query_instance'),
     check('query_lastId'),
     expressValidation,
-    userTokenProcessing,
+    userSessionProcessing,
     (req, res) => {
 
 })
 
 router.post('/posts/get', 
     check('session_id').not().isEmpty().isAlphanumeric().isLength(64),
-    check('currentAccessToken').not().isEmpty().isAlphanumeric().isLength(64),
     expressValidation,
-    userTokenProcessing,
+    userSessionProcessing,
     (req, res) => {
 
     }
@@ -211,10 +208,9 @@ router.post('/posts/get',
 // will only be a follow up of other requests
 router.post('/media-upload', (req, res) => {
     check('session_id').not().isEmpty().isAlphanumeric().isLength(64),
-    check('currentAccessToken').not().isEmpty().isAlphanumeric().isLength(64),
     check('buffer_id').not().isEmpty().isAlphanumeric().isLength(64)
     expressValidation,
-    userTokenProcessing,
+    userSessionProcessing,
     async (req, res) => {
 // ##002 user:{userid}:buffers:{bufferid}:left = leftToUpload count
     }
@@ -224,13 +220,12 @@ router.post('/media-upload', (req, res) => {
 
 router.post('/posts/create',
     check('session_id').not().isEmpty().isAlphanumeric().isLength(64),
-    check('currentAccessToken').not().isEmpty().isAlphanumeric().isLength(64),
     check('query_localInstance').not().isEmpty().isString({ max: 64 }),
     check('query_article_problem').not().isEmpty().isString().isLength({ max: 1200 }),
     check('query_article_solution').isString().isLength({ max: 700 }),
     check('query_article_mediaCount').isNumeric(),
     expressValidation,
-    userTokenProcessing,
+    userSessionProcessing,
     async (req, res) => {
     if(!res.locals.userid) {
         res.sendStatus(500);
@@ -266,7 +261,6 @@ router.post('/posts/create',
 });
 router.post('/posts/reaction', 
     check('session_id').not().isEmpty().isAlphanumeric().isLength(64),
-    check('currentAccessToken').not().isEmpty().isAlphanumeric().isLength(64),
     check('query_parent').not().isEmpty().isAlphanumeric(),
     check('query_reaction_type').not().isEmpty().isAlphanumeric(),
     check('query_reaction_score').not().isEmpty().isNumeric({ no_symbols: true }).isLength({ max: 3 }),
@@ -322,11 +316,10 @@ router.post('/posts/reaction',
 
 router.post('/comments/create',    
     check('session_id').not().isEmpty().isAlphanumeric().isLength(64),
-    check('currentAccessToken').not().isEmpty().isAlphanumeric().isLength(64),
     check('query_parent').not().isEmpty().isAlphanumeric(),
     check('query_comment').not().isEmpty().isAlphanumeric().isLength({ max: 450 }),
     expressValidation,
-    userTokenProcessing,
+    userSessionProcessing,
     async (req, res) => {
     if(!res.locals.userid) {
         res.sendStatus(500);
@@ -364,11 +357,10 @@ router.post('/comments/create',
 
 router.post('/comments/create-reply',
     check('session_id').not().isEmpty().isAlphanumeric().isLength(64),
-    check('currentAccessToken').not().isEmpty().isAlphanumeric().isLength(64),
     check('query_parent_comment').not().isEmpty().isAlphanumeric(),
     check('query_comment').not().isEmpty().isAlphanumeric().isLength({ max: 450 }),
     expressValidation,
-    userTokenProcessing,
+    userSessionProcessing,
     async (req, res) => {
     if(!res.locals.userid) {
         res.sendStatus(500);

@@ -46,7 +46,6 @@ router.post('/getSessionType',
         })
     }
 })
-
 router.post('/admin/logout', (req, res) => {
     return res.sendStatus(500);
 })

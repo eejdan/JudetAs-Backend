@@ -21,6 +21,10 @@ const userArticleSchema = new mongoose.Schema({
         type: Number,
         default: 1
     },
+    solveDate: {
+        type: Date,
+        default: new Date('1 Jan 1990')
+    },
     problemText: {
         type: String,
         required: true

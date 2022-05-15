@@ -128,7 +128,17 @@ router.post('/getFeed',
                     localInstance: localsId,
                     progress: {
                         $gte: 0
-                    } 
+                    }/* ,
+                    $and: {
+                        $not: {
+                            solveDate: {
+                                $lte: (Date.now() - (10*24*60*60))
+                            }
+                        },
+                        solveDate: {
+                            $gte: (Date.now() - ())
+                        }
+                    } */
                 }
             },
             {

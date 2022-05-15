@@ -21,6 +21,14 @@ const client = require('../redisconnection');
 
 const router = express.Router();
 
+router.post('/getSessionType', (req, res) => {
+    
+})
+
+router.post('/admin/logout', (req, res) => {
+    return res.sendStatus(500);
+})
+
 router.post('/admin/login', //returneaza response cu o sesiune (neautorizata inca)
     check('username').not().isEmpty().isAlphanumeric().isLength({ min: 5, max: 48 }), 
     check('password').not().isEmpty().isString().isLength({ min: 5, max: 48 }),
@@ -50,6 +58,14 @@ router.post('/admin/login', //returneaza response cu o sesiune (neautorizata inc
             )
             if(tryStringQuery) {
                 found = false;
+            } else {
+                tryStringQuery = await client.exists(
+                    'user:sessions:'
+                    +newSessionString
+                )
+                if(tryStringQuery) {
+                    found = false;
+                }
             }
         }while(!found);
 
@@ -162,24 +178,20 @@ router.post('/user/login',
             )
             if(tryStringQuery) {
                 found = false;
-            }
-        }while(!found);
-        do { //tbd verify all redis paths
-            found = true;
-            newTokenString = generateString(64);
-            let tryStringQuery = await client.exists(
-                redisPathString
-                +newSessionString+ ':tokens:' +newTokenString
-            )
-            if(tryStringQuery) {
-                found = false;
+            } else {
+                tryStringQuery = await client.exists(
+                    'admin:sessions:'
+                    +newSessionString
+                )
+                if(tryStringQuery) {
+                    found = false;
+                }
             }
         }while(!found);
         redisPathString = redisPathString+newSessionString;
         await client.set(redisPathString, true, 'EX', (10 * 24 * 60 * 60));
-        await client.set(redisPathString+':tokens:'+newTokenString, true)
         await client.set(redisPathString+':userid', res.locals.user._id);
-        await client.set(redisPathString+':tokens:last', newTokenString);
+        res.cookie('unsolved_sid', newSessionString, { sameSite: 'strict' })
 
     }
 })

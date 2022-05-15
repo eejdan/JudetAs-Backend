@@ -57,7 +57,7 @@ app.get('/', (req, res) => {
 
 //localinstance display names will have max 64 chars
 //usernames will have max 48 chars
-app.listen(8080, () => {
+app.listen(3030, () => {
     console.log("Backend server started")
 })
 setTimeout(()=> {

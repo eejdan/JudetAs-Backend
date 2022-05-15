@@ -7,7 +7,7 @@ const expressValidation = require('../middleware/expressValidation');
 
 const userSessionProcessing = require('../middleware/userSessionProcessing');
 
-const mongoose = require('mongoose')
+const mongoose = require('mongoose');
 
 const LocalInstance = require('../models/LocalInstance');
 const UserRole = require('../models/AdminRole');
@@ -266,7 +266,9 @@ router.post('/posts/create',
         solutionText: req.body.query_article_solution,
         articleMedia: [],
     });
-
+    res.status(200).send({
+        media
+    })
 
 });
 router.post('/posts/reaction', 

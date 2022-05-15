@@ -40,7 +40,7 @@ router.post('/getSessionType',
             'user:sessions'
             +req.body.session_id
         )
-        if(!tryUserSession) { return res.status(410); }
+        if(!tryUserSession) { return res.sendStatus(410); }
         return res.status(200).send({
             elevated: false
         })
@@ -52,7 +52,7 @@ router.post('/admin/logout', (req, res) => {
 //tbd /admin/reauthorize with solved currentAccessToken
 //  current /authorize process can send 
 // the same data twice and reauthorize infinitely TODO
-
+// TODO FIX FE ON LOAD SESSION TYPE
 router.post('/admin/login', //returneaza response cu o sesiune (neautorizata inca)
     check('username').not().isEmpty().isAlphanumeric().isLength({ min: 5, max: 48 }), 
     check('password').not().isEmpty().isString().isLength({ min: 5, max: 48 }),

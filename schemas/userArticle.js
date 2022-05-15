@@ -2,6 +2,10 @@
 const mongoose = require("mongoose");
 
 const userArticleSchema = new mongoose.Schema({
+    creationDate: {
+        type: Date, 
+        default: Date.now()
+    },
     user: {
         type: mongoose.SchemaTypes.ObjectId,
         required: true
@@ -33,7 +37,7 @@ const userArticleSchema = new mongoose.Schema({
     solutionText: {
         type: String,
         required: false,
-        default: ''
+        default: ' '
     }
 }, {
     collection: 'userArticles'

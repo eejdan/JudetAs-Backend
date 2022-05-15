@@ -51,6 +51,9 @@ app.use('/api/userpre', userpre);
 app.get('/api/', (req, res) => {
     res.send("test");
 })
+app.get('/', (req, res) => {
+  res.send('Yes');
+})
 
 //localinstance display names will have max 64 chars
 //usernames will have max 48 chars

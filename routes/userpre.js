@@ -27,7 +27,7 @@ const crypto = require('crypto');
 const User = require('../models/User');
 const UserImage = require('../models/UserImage')
 const UserRegisterRequest = require('../models/UserRegisterRequest')
-const LocalInstance = require('../schemas/LocalInstance')
+const LocalInstance = require('../models/LocalInstance')
 
 const { sendEmailConfirmation } = require('../mailer') 
 

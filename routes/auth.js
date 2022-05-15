@@ -21,13 +21,38 @@ const client = require('../redisconnection');
 
 const router = express.Router();
 
-router.post('/getSessionType', (req, res) => {
-    
+router.post('/getSessionType', 
+    check("session_id").not().isEmpty().isAlphanumeric().isLength(64),
+    async (req, res) => {
+    {
+        let tryAdminSession = await client.exists(
+            'admin:sessions'
+            +req.body.session_id
+        )
+        if(tryAdminSession) {
+            return res.status(200).send({
+                elevated: true
+            })
+        }
+    }
+    {
+        let tryUserSession = await client.exists(
+            'user:sessions'
+            +req.body.session_id
+        )
+        if(!tryUserSession) { return res.status(410); }
+        return res.status(200).send({
+            elevated: false
+        })
+    }
 })
 
 router.post('/admin/logout', (req, res) => {
     return res.sendStatus(500);
 })
+//tbd /admin/reauthorize with solved currentAccessToken
+//  current /authorize process can send 
+// the same data twice and reauthorize infinitely TODO
 
 router.post('/admin/login', //returneaza response cu o sesiune (neautorizata inca)
     check('username').not().isEmpty().isAlphanumeric().isLength({ min: 5, max: 48 }), 
